@@ -198,8 +198,8 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:gravity="bottom"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
                 android:orientation="horizontal">
 
                 <LinearLayout
@@ -225,18 +225,6 @@
                     android:layout_marginStart="32dp"
                     android:gravity="end"
                     android:orientation="vertical">
-
-                    <!-- what the focused button does -->
-                    <TextView
-                        android:id="@+id/buttonLabel"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="10dp"
-                        android:background="@drawable/tv_badge_dark"
-                        android:paddingHorizontal="10dp"
-                        android:paddingVertical="4dp"
-                        android:textColor="#FFFFFF"
-                        android:textSize="15sp" />
 
                     <LinearLayout
                         android:layout_width="wrap_content"
@@ -288,14 +276,33 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <TextView
-                android:id="@+id/hint"
-                android:layout_width="wrap_content"
+            <!-- remote hint on the left, what the focused button does on the right -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:text="@string/tv_player_hint"
-                android:textColor="#9A9AA2"
-                android:textSize="14sp" />
+                android:layout_marginTop="16dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/hint"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/tv_player_hint"
+                    android:textColor="#9A9AA2"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/buttonLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/tv_badge_dark"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="4dp"
+                    android:textColor="#FFFFFF"
+                    android:textSize="15sp" />
+            </LinearLayout>
         </LinearLayout>
     </FrameLayout>
 </FrameLayout>

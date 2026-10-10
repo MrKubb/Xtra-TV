@@ -126,6 +126,9 @@ class TvSettings(
             activity.resources.getStringArray(R.array.playerQualityEntries).toList(),
             activity.resources.getStringArray(R.array.playerQualityValues).toList())
         toggle(R.string.hide_during_ads, C.PLAYER_HIDE_ADS, false)
+        choice(R.string.tv_player_panel_size, KEY_PLAYER_PANEL, SIZE_MEDIUM,
+            listOf(R.string.tv_panel_small, R.string.tv_panel_medium, R.string.tv_panel_large).map { activity.getString(it) },
+            listOf(SIZE_SMALL, SIZE_MEDIUM, SIZE_LARGE))
         toggle(R.string.save_video_positions, C.PLAYER_USE_VIDEO_POSITIONS, true)
 
         section(R.string.tv_section_chat)
@@ -266,6 +269,7 @@ class TvSettings(
         const val KEY_START_ON_TV = "tv_start_on_tv"
         const val KEY_LANGUAGE_TABS = "tv_language_tabs"
         const val KEY_PREVIEW = "tv_preview"
+        const val KEY_PLAYER_PANEL = "tv_player_panel_size"
         private const val KEY_LAST_CHANNEL_LOGIN = "tv_last_channel_login"
         private const val KEY_LAST_CHANNEL_NAME = "tv_last_channel_name"
         /** Position of the "Menu sections" row in the settings list (after the section header and the start section). */
@@ -318,6 +322,13 @@ class TvSettings(
         fun previewEnabled(context: Context) = context.prefs().getBoolean(KEY_PREVIEW, true)
 
         fun cardSize(context: Context) = context.prefs().getString(KEY_CARD_SIZE, SIZE_MEDIUM)
+
+        /** Size of the player's info panel and banner: large = original design, medium (default), small. */
+        fun playerPanelScale(context: Context) = when (context.prefs().getString(KEY_PLAYER_PANEL, SIZE_MEDIUM)) {
+            SIZE_LARGE -> 1f
+            SIZE_SMALL -> 0.65f
+            else -> 0.8f
+        }
 
         /** Extra columns for the selected card size: small cards = more per row. */
         fun columnOffset(context: Context) = when (cardSize(context)) {

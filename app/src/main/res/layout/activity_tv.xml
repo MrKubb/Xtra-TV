@@ -232,13 +232,13 @@
             android:background="@drawable/tv_preview_info_bg"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:padding="12dp">
+            android:padding="8dp">
 
             <ImageView
                 android:id="@+id/previewAvatar"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_marginEnd="12dp" />
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="10dp" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -253,7 +253,7 @@
                     android:ellipsize="end"
                     android:maxLines="1"
                     android:textColor="#FFFFFF"
-                    android:textSize="20sp"
+                    android:textSize="16sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -263,16 +263,16 @@
                     android:ellipsize="end"
                     android:maxLines="1"
                     android:textColor="#EDE4FF"
-                    android:textSize="16sp" />
+                    android:textSize="13sp" />
 
                 <TextView
                     android:id="@+id/previewLine3"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
-                    android:maxLines="2"
+                    android:maxLines="1"
                     android:textColor="#DCD0F5"
-                    android:textSize="14sp" />
+                    android:textSize="12sp" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>

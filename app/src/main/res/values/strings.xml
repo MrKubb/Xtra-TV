@@ -633,6 +633,10 @@
     <string name="tv_player_reload">Reload</string>
     <string name="tv_player_move_chat">Move chat</string>
     <string name="tv_player_resize_chat">Chat size</string>
+    <string name="tv_player_panel_size">Player panel size</string>
+    <string name="tv_panel_small">Small</string>
+    <string name="tv_panel_medium">Medium</string>
+    <string name="tv_panel_large">Large</string>
     <string name="tv_chat_resize_hint">◀ ▶ width\n▲ ▼ height\n\nOK: done</string>
     <string name="tv_chat_move_hint">◀ ▲ ▼ ▶\nmove the chat\n\nOK: done</string>
     <string name="tv_player_position">%1$d / %2$d in this row</string>

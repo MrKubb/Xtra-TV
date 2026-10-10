@@ -124,6 +124,10 @@ class TvPlayerActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityTvPlayerBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        TvSettings.playerPanelScale(this).takeIf { it != 1f }?.let { scale ->
+            scaleViews(binding.overlay, scale)
+            scaleViews(binding.banner, scale)
+        }
         WindowCompat.getInsetsController(window, window.decorView).apply {
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             hide(WindowInsetsCompat.Type.systemBars())
@@ -441,12 +445,36 @@ class TvPlayerActivity : AppCompatActivity() {
             btnChat.contentDescription = getString(if (chatVisible) R.string.tv_player_hide_chat else R.string.tv_player_show_chat)
             // crossed out icon while the chat is hidden
             btnChat.setImageResource(if (chatVisible) R.drawable.baseline_speaker_notes_black_24 else R.drawable.baseline_speaker_notes_off_black_24)
+            // moving and resizing only make sense when the chat is shown
+            val chatButtons = if (chatVisible) View.VISIBLE else View.GONE
+            btnMoveChat.visibility = chatButtons
+            btnResizeChat.visibility = chatButtons
             // refresh the label of the focused button (e.g. after toggling it)
             root.findFocus()?.contentDescription?.let { buttonLabel.text = it }
         }
     }
 
     /** Arrows now move or resize the chat (shown if it was hidden), OK or Back puts it down. */
+    /** Scales text sizes, fixed view sizes, paddings and margins of [view] and its children (player panel size). */
+    private fun scaleViews(view: View, scale: Float) {
+        if (view is android.widget.TextView) view.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, view.textSize * scale)
+        view.setPadding((view.paddingLeft * scale).toInt(), (view.paddingTop * scale).toInt(), (view.paddingRight * scale).toInt(), (view.paddingBottom * scale).toInt())
+        view.layoutParams?.let { params ->
+            if (params.width > 0) params.width = (params.width * scale).toInt()
+            if (params.height > 0) params.height = (params.height * scale).toInt()
+            (params as? ViewGroup.MarginLayoutParams)?.let {
+                // read everything first: start/end fall back to left/right, scaling them after would scale twice
+                val start = it.marginStart
+                val end = it.marginEnd
+                it.setMargins((it.leftMargin * scale).toInt(), (it.topMargin * scale).toInt(), (it.rightMargin * scale).toInt(), (it.bottomMargin * scale).toInt())
+                it.marginStart = (start * scale).toInt()
+                it.marginEnd = (end * scale).toInt()
+            }
+            view.layoutParams = params
+        }
+        if (view is ViewGroup) for (i in 0 until view.childCount) scaleViews(view.getChildAt(i), scale)
+    }
+
     private fun startChatMode(mode: Int) {
         if (!chatVisible) {
             prefs().edit().putBoolean(KEY_CHAT, true).apply()

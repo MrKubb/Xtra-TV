@@ -9,6 +9,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import coil3.imageLoader
 import coil3.request.ImageRequest
@@ -121,7 +122,10 @@ class TvPreview(private val activity: AppCompatActivity, private val binding: Ac
         }
     }
 
-    private fun player(): ExoPlayer = player ?: ExoPlayer.Builder(activity).build().also { player ->
+    private fun player(): ExoPlayer = player ?: ExoPlayer.Builder(activity)
+        // start as soon as half a second is buffered (2.5 s by default): the preview shows up much sooner
+        .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(2000, 10000, 500, 1000).build())
+        .build().also { player ->
         // enough for a preview, and easy on weak TV boxes and connections
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().setMaxVideoSize(1280, 720).build()
         player.addListener(object : Player.Listener {
@@ -221,7 +225,7 @@ class TvPreview(private val activity: AppCompatActivity, private val binding: Ac
     }
 
     companion object {
-        private const val DELAY_MS = 1000L
+        private const val DELAY_MS = 300L
         const val FOCUSED_SCALE = 1.06f
         private const val SCALE = 1.5f
     }

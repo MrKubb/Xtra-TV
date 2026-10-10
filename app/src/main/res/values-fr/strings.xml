@@ -614,6 +614,10 @@
     <string name="tv_player_reload">Recharger</string>
     <string name="tv_player_move_chat">Déplacer le chat</string>
     <string name="tv_player_resize_chat">Taille du chat</string>
+    <string name="tv_player_panel_size">Taille du panneau du lecteur</string>
+    <string name="tv_panel_small">Petit</string>
+    <string name="tv_panel_medium">Moyen</string>
+    <string name="tv_panel_large">Grand</string>
     <string name="tv_chat_resize_hint">◀ ▶ largeur\n▲ ▼ hauteur\n\nOK : terminé</string>
     <string name="tv_chat_move_hint">◀ ▲ ▼ ▶\ndéplacer le chat\n\nOK : terminé</string>
     <string name="tv_player_position">%1$d / %2$d dans cette rangée</string>

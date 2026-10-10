@@ -105,8 +105,9 @@ class TvHome(
             binding.cards.layoutManager = object : LinearLayoutManager(activity, HORIZONTAL, false) {
                 // The focused card slides to the start of the row, like Android TV launchers.
                 override fun requestChildRectangleOnScreen(parent: RecyclerView, child: View, rect: Rect, immediate: Boolean, focusedChildVisible: Boolean): Boolean {
-                    // keep the card's margin and padding so its zoom is not cut off at the edge
-                    val dx = child.left - (child.layoutParams as ViewGroup.MarginLayoutParams).leftMargin - parent.paddingLeft
+                    // keep the card's margin so its zoom is not cut off, and a part of the previous card visible
+                    val peek = if (getPosition(child) > 0) (child.width * PEEK).toInt() else 0
+                    val dx = child.left - (child.layoutParams as ViewGroup.MarginLayoutParams).leftMargin - parent.paddingLeft - peek
                     if (immediate) parent.scrollBy(dx, 0) else parent.smoothScrollBy(dx, 0)
                     return true
                 }
@@ -257,6 +258,11 @@ class TvHome(
         var v = view
         while (v.parent !is RecyclerView) v = v.parent as View
         return v
+    }
+
+    private companion object {
+        /** Part of the previous card left visible on the left of the focused card. */
+        const val PEEK = 0.55f
     }
 
     private fun cardWidth(page: TvViewModel.Page): Int {
