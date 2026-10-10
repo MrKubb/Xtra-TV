@@ -12,6 +12,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.PagingSource
+import androidx.paging.PagingState
 import androidx.paging.cachedIn
 import androidx.paging.map
 import com.github.andreyasadchy.xtra.R
@@ -23,6 +24,7 @@ import com.github.andreyasadchy.xtra.model.ui.Game
 import com.github.andreyasadchy.xtra.model.ui.Stream
 import com.github.andreyasadchy.xtra.model.ui.User
 import com.github.andreyasadchy.xtra.model.ui.Video
+import com.github.andreyasadchy.xtra.repository.datasource.ChannelSuggestionsDataSource
 import com.github.andreyasadchy.xtra.repository.datasource.ChannelVideosDataSource
 import com.github.andreyasadchy.xtra.repository.datasource.FollowedChannelsDataSource
 import com.github.andreyasadchy.xtra.repository.datasource.FollowedGamesDataSource
@@ -43,6 +45,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 class TvViewModel(private val app: XtraApp) : ViewModel() {
 
@@ -54,12 +57,22 @@ class TvViewModel(private val app: XtraApp) : ViewModel() {
      */
     sealed class Page(val columns: Int = 4, val usesLanguages: Boolean = false, val key: String? = null) {
         data object Following : Page(key = "following")
+        data object Favorites : Page(key = "favorites")
         data class Language(val code: String) : Page(key = "lang_$code")
+        /** "My games live": expanded into one [GameRow] per followed game on the home screen. */
+        data object FollowedGameRows : Page(key = "followed_game_rows")
+        data object Suggestions : Page(key = "suggestions")
         data object FollowedGames : Page(6, key = "followed_games")
         data object FollowedVideos : Page(key = "followed_videos")
         data object FollowedChannels : Page(6, key = "followed_channels")
         data object TopGames : Page(6, key = "top_games")
         data object TopStreams : Page(usesLanguages = true, key = "top_streams")
+
+        /** Live streams of one followed game, a home row under [FollowedGameRows]. */
+        class GameRow(val game: com.github.andreyasadchy.xtra.model.ui.Game) : Page(usesLanguages = true, key = "game_${game.id}") {
+            override fun equals(other: Any?) = other is GameRow && other.game.id == game.id
+            override fun hashCode() = game.id.hashCode()
+        }
 
         data object Home : Page()
         data object Settings : Page()
@@ -70,13 +83,21 @@ class TvViewModel(private val app: XtraApp) : ViewModel() {
         val isSection: Boolean
             get() = key != null
 
+        /** Sidebar entry of a home row that has none of its own. */
+        val parent: Page?
+            get() = if (this is GameRow) FollowedGameRows else null
+
         /** Wide 16:9 cards (streams, videos) vs narrow ones (game posters, channel avatars). */
         val wideCards: Boolean
             get() = columns < 6
 
         fun title(context: Context): String = when (this) {
             Following -> context.getString(R.string.tv_followed_live)
+            Favorites -> context.getString(R.string.tv_favorites)
             is Language -> TvLanguages.name(context, code)
+            FollowedGameRows -> context.getString(R.string.tv_followed_game_rows)
+            is GameRow -> game.name.orEmpty()
+            Suggestions -> context.getString(R.string.tv_suggestions)
             FollowedGames -> context.getString(R.string.tv_followed_games)
             FollowedVideos -> context.getString(R.string.tv_past_broadcasts)
             FollowedChannels -> context.getString(R.string.tv_followed_channels)
@@ -90,15 +111,24 @@ class TvViewModel(private val app: XtraApp) : ViewModel() {
         }
 
         companion object {
-            /** All sections, in sidebar and home order. */
-            fun sections(context: Context): List<Page> =
-                listOf(Following) + TvSettings.languageTabs(context).map { Language(it) } +
-                        listOf(FollowedGames, FollowedVideos, FollowedChannels, TopGames, TopStreams)
-
-            fun visibleSections(context: Context): List<Page> {
-                val hidden = TvSettings.hiddenSections(context)
-                return sections(context).filter { it.key !in hidden }
+            fun fromKey(key: String): Page? = when (key) {
+                Following.key -> Following
+                Favorites.key -> Favorites
+                FollowedGameRows.key -> FollowedGameRows
+                Suggestions.key -> Suggestions
+                FollowedGames.key -> FollowedGames
+                FollowedVideos.key -> FollowedVideos
+                FollowedChannels.key -> FollowedChannels
+                TopGames.key -> TopGames
+                TopStreams.key -> TopStreams
+                else -> key.removePrefix("lang_").takeIf { key.startsWith("lang_") }?.let { Language(it) }
             }
+
+            /** All sections, in the order chosen in the TV settings. */
+            fun sections(context: Context): List<Page> = TvSections.entries(context).mapNotNull { fromKey(it.key) }
+
+            fun visibleSections(context: Context): List<Page> =
+                TvSections.entries(context).filter { it.visible }.mapNotNull { fromKey(it.key) }
         }
     }
 
@@ -107,6 +137,10 @@ class TvViewModel(private val app: XtraApp) : ViewModel() {
 
     /** Home row currently at the top of the screen, highlighted in the sidebar. */
     var section: Page = startSection()
+
+    /** Followed games, loaded once for the "My games live" rows. */
+    val followedGames = MutableStateFlow<List<Game>?>(null)
+    private var loadingFollowedGames = false
 
     /** Language filter of top streams and game pages. */
     val languages = MutableStateFlow(app.prefs().getStringSet(KEY_LANGUAGES, null).orEmpty())
@@ -118,6 +152,31 @@ class TvViewModel(private val app: XtraApp) : ViewModel() {
         val visible = Page.visibleSections(app)
         val chosen = app.prefs().getString(TvSettings.KEY_START_PAGE, TvSettings.START_AUTO)
         return visible.find { it.key == chosen } ?: visible.firstOrNull() ?: Page.Following
+    }
+
+    fun loadFollowedGames() {
+        if (loadingFollowedGames || followedGames.value != null) return
+        loadingFollowedGames = true
+        viewModelScope.launch {
+            val prefs = app.prefs()
+            val result = try {
+                FollowedGamesDataSource(
+                    app.xtraModule.localGameFollowsRepository, TwitchApiHelper.getGQLHeaders(app, true), app.xtraModule.graphQLRepository,
+                    prefs.getBoolean(C.ENABLE_INTEGRITY, false), prefs.getString(C.NETWORK_LIBRARY, C.OKHTTP),
+                ).load(PagingSource.LoadParams.Refresh(null, 100, false))
+            } catch (e: Exception) {
+                null
+            }
+            followedGames.value = (result as? PagingSource.LoadResult.Page)?.data.orEmpty()
+            loadingFollowedGames = false
+        }
+    }
+
+    /** Home rows: the visible sections, "My games live" expanded into one row per followed game. */
+    fun homeRows(context: Context): List<Page> = Page.visibleSections(context).flatMap { page ->
+        if (page == Page.FollowedGameRows) {
+            followedGames.value?.takeIf { it.isNotEmpty() }?.map { Page.GameRow(it) } ?: listOf(page)
+        } else listOf(page)
     }
 
     fun setLanguages(value: Set<String>) {
@@ -146,7 +205,14 @@ class TvViewModel(private val app: XtraApp) : ViewModel() {
         }
         val gqlLanguages = languages.toList().ifEmpty { null }
         return when (page) {
-            Page.Home, Page.Settings -> flowOf(PagingData.empty())
+            Page.Home, Page.Settings, Page.FollowedGameRows -> flowOf(PagingData.empty())
+            Page.Favorites -> pager({ card: TvCard -> card }) { FavoritesSource(gql, network) }
+            Page.Suggestions -> pager(::streamCard) {
+                ChannelSuggestionsDataSource(TvSettings.suggestionsSeed(app)?.first, gql, module.graphQLRepository, integrity, network)
+            }
+            is Page.GameRow -> pager(::streamCard) {
+                GameStreamsDataSource(page.game.id, page.game.slug, page.game.name, gqlLanguages?.mapNotNull { l -> Language.entries.find { it.rawValue == l } }, StreamSort.VIEWER_COUNT, gqlLanguages, "VIEWER_COUNT", null, gql, module.graphQLRepository, helix, module.helixRepository, integrity, network)
+            }
             Page.Following -> pager(::streamCard) {
                 FollowedStreamsDataSource(userId, module.localChannelFollowsRepository, gqlAuth, module.graphQLRepository, helix, module.helixRepository, integrity, network)
             }
@@ -188,6 +254,58 @@ class TvViewModel(private val app: XtraApp) : ViewModel() {
     private fun <T : Any> pager(toCard: (T) -> TvCard, source: () -> PagingSource<Int, T>) =
         Pager(PagingConfig(pageSize = 30, prefetchDistance = 12, initialLoadSize = 30), pagingSourceFactory = source)
             .flow.map { data -> data.map(toCard) }.cachedIn(viewModelScope)
+
+    /** Favorite channels: live ones first (as streams), then offline ones (as channels), each group in pinned order. */
+    private inner class FavoritesSource(private val gqlHeaders: Map<String, String>, private val networkLibrary: String?) : PagingSource<Int, TvCard>() {
+        override fun getRefreshKey(state: PagingState<Int, TvCard>): Int? = null
+
+        override suspend fun load(params: LoadParams<Int>): LoadResult<Int, TvCard> {
+            val favorites = TvFavorites.list(app)
+            if (favorites.isEmpty()) return LoadResult.Page(emptyList(), null, null)
+            return try {
+                val users = favorites.chunked(100).flatMap { chunk ->
+                    app.xtraModule.graphQLRepository.loadQueryUsersStream(networkLibrary, gqlHeaders, chunk.map { it.id }).data?.users.orEmpty()
+                }.filterNotNull()
+                val cards = favorites.map { favorite ->
+                    val user = users.find { it.id == favorite.id }
+                    val stream = user?.stream?.takeIf { it.viewersCount != null }
+                    if (user != null && stream != null) {
+                        streamCard(Stream(
+                            id = stream.id,
+                            channelId = user.id,
+                            channelLogin = user.login,
+                            channelName = user.displayName,
+                            channelImageURL = user.profileImageURL,
+                            gameId = stream.game?.id,
+                            gameSlug = stream.game?.slug,
+                            gameName = stream.game?.displayName,
+                            title = stream.broadcaster?.broadcastSettings?.title,
+                            thumbnailURL = stream.previewImageURL,
+                            createdAt = stream.createdAt?.toString(),
+                            viewerCount = stream.viewersCount,
+                        ))
+                    } else {
+                        offlineCard(User(
+                            id = favorite.id,
+                            login = user?.login ?: favorite.login,
+                            name = user?.displayName ?: favorite.name,
+                            profileImageURL = user?.profileImageURL ?: favorite.image,
+                            isLive = false,
+                        ))
+                    }
+                }.sortedByDescending { it.live }
+                LoadResult.Page(cards, null, null)
+            } catch (e: Exception) {
+                LoadResult.Error(e)
+            }
+        }
+    }
+
+    private fun offlineCard(it: User) = TvCard(
+        key = "o" + it.id, image = it.profileImage, shape = TvCard.Shape.AVATAR,
+        line1 = it.name ?: it.login, line2 = app.getString(R.string.tv_offline), line3 = null,
+        item = it,
+    )
 
     private fun streamCard(it: Stream) = TvCard(
         key = "s" + (it.id ?: it.channelLogin), image = it.thumbnail, shape = TvCard.Shape.WIDE, live = true,

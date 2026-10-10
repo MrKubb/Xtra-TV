@@ -55,7 +55,7 @@ class TvActivity : AppCompatActivity() {
     private lateinit var preview: TvPreview
     private lateinit var home: TvHome
     private lateinit var settings: TvSettings
-    private val adapter = TvCardAdapter(::open, ::onCardFocus)
+    private val adapter = TvCardAdapter(::open, ::onCardFocus, onLongClick = ::showCardMenu)
     private lateinit var layoutManager: GridLayoutManager
 
     /** Sidebar entries and what they show. */
@@ -89,7 +89,7 @@ class TvActivity : AppCompatActivity() {
         preview = TvPreview(this, binding.previewView)
         home = TvHome(this, binding.homeRows, viewModel, ::open, ::onCardFocus,
             onRowFocus = { page ->
-                viewModel.section = page
+                viewModel.section = page.parent ?: page
                 updateActiveTab()
             },
             onRowCount = { page, count ->
@@ -97,8 +97,9 @@ class TvActivity : AppCompatActivity() {
                 updateTabLabel(page)
             },
             sidebarEntry = ::activeTab,
+            onMenu = ::showCardMenu,
         )
-        settings = TvSettings(this, binding.settingsList, viewModel, onHomeChanged = { applyHomeSettings(rebuild = true) }) {
+        settings = TvSettings(this, binding.settingsList, viewModel, onHomeChanged = { applyHomeSettings(rebuild = it) }) {
             settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
         }
         with(binding) {
@@ -169,6 +170,7 @@ class TvActivity : AppCompatActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 when {
+                    viewModel.stack.value.first() == Page.Settings && settings.closeSectionsEditor() -> Unit
                     viewModel.stack.value.size > 1 -> {
                         val stack = viewModel.stack.value.dropLast(1)
                         pendingRestore = savedPositions.remove(stack.last()) ?: (null to 0)
@@ -202,6 +204,10 @@ class TvActivity : AppCompatActivity() {
             }
         }
         lifecycleScope.launch {
+            // "My games live" rows appear once the followed games are loaded
+            viewModel.followedGames.collect { if (it != null) applyHomeSettings() }
+        }
+        lifecycleScope.launch {
             viewModel.current.collectLatest { (page, _) ->
                 render(page)
                 viewModel.flowFor(page).collectLatest { adapter.submitData(it) }
@@ -209,6 +215,14 @@ class TvActivity : AppCompatActivity() {
         }
         home.scrollTo(viewModel.section, smooth = false)
         activeTab()?.requestFocus()
+    }
+
+    override fun onRestart() {
+        super.onRestart()
+        // live status of favorites and the channel suggestions are based on may have changed
+        home.refresh(Page.Favorites)
+        home.refresh(Page.Suggestions)
+        home.refreshTitles()
     }
 
     override fun onStop() {
@@ -235,14 +249,20 @@ class TvActivity : AppCompatActivity() {
     /** Rebuilds the sidebar sections and the home rows from the TV settings. */
     private fun applyHomeSettings(rebuild: Boolean = false) {
         val sections = Page.visibleSections(this)
-        tabs.keys.filter { tabs[it]?.isSection == true }.forEach { tabs.remove(it) }
-        binding.sectionTabs.removeAllViews()
-        sections.forEach { page ->
-            addTab(TvTabBinding.inflate(layoutInflater, binding.sectionTabs, true).root, page)
-            updateTabLabel(page)
+        // only rebuild the sidebar when its sections changed, so it keeps the focus otherwise
+        if (tabs.values.filter { it.isSection } != sections) {
+            val focused = tabs[binding.sectionTabs.focusedChild]
+            tabs.keys.filter { tabs[it]?.isSection == true }.forEach { tabs.remove(it) }
+            binding.sectionTabs.removeAllViews()
+            sections.forEach { page ->
+                addTab(TvTabBinding.inflate(layoutInflater, binding.sectionTabs, true).root, page)
+                updateTabLabel(page)
+            }
+            focused?.let { page -> tabs.entries.firstOrNull { it.value == page }?.key?.requestFocus() }
         }
         if (viewModel.section !in sections) viewModel.section = sections.firstOrNull() ?: Page.Following
-        home.setSections(sections, rebuild)
+        if (Page.FollowedGameRows in sections) viewModel.loadFollowedGames()
+        home.setSections(viewModel.homeRows(this), rebuild)
         updateActiveTab()
     }
 
@@ -331,6 +351,7 @@ class TvActivity : AppCompatActivity() {
 
     private fun render(page: Page) {
         preview.stop()
+        if (page != Page.Settings) settings.reset()
         with(binding) {
             val isHome = page == Page.Home
             val isSettings = page == Page.Settings
@@ -388,6 +409,7 @@ class TvActivity : AppCompatActivity() {
             is Video -> item.id?.let {
                 preview.stop()
                 openFullScreen()
+                TvSettings.setLastChannel(this, item.channelLogin, item.channelName)
                 startActivity(Intent(Intent.ACTION_VIEW, "https://www.twitch.tv/videos/$it".toUri(), this, MainActivity::class.java)
                     .putExtra(MainActivity.KEY_FROM_TV, true))
             }
@@ -409,11 +431,31 @@ class TvActivity : AppCompatActivity() {
     private fun play(stream: Stream) {
         preview.stop()
         openFullScreen()
+        TvSettings.setLastChannel(this, stream.channelLogin, stream.channelName)
         startActivity(Intent(this, MainActivity::class.java).apply {
             action = MainActivity.INTENT_LIVE_NOTIFICATION
             putExtra(MainActivity.KEY_VIDEO, stream)
             putExtra(MainActivity.KEY_FROM_TV, true)
         })
+    }
+
+    /** OK held on a card: add its channel to the favorites (or remove it), or open the channel. */
+    private fun showCardMenu(item: Any) {
+        val channel = TvFavorites.channelOf(item) ?: return
+        val favorite = TvFavorites.contains(this, channel.id)
+        val actions = listOfNotNull(
+            getString(if (favorite) R.string.tv_remove_favorite else R.string.tv_add_favorite) to {
+                TvFavorites.toggle(this, channel)
+                home.refresh(Page.Favorites)
+            },
+            (getString(R.string.tv_open_channel) to {
+                push(Page.Channel(User(id = channel.id, login = channel.login, name = channel.name, profileImageURL = channel.image)))
+            }).takeIf { item !is User },
+        )
+        getAlertDialogBuilder()
+            .setTitle(channel.name ?: channel.login)
+            .setItems(actions.map { it.first }.toTypedArray()) { _, which -> actions[which].second() }
+            .show()
     }
 
     /** Streams opened from the TV interface start full screen: the chat only shows up when asked for. */

@@ -12,6 +12,7 @@ import androidx.paging.LoadState
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
+import com.github.andreyasadchy.xtra.R
 import com.github.andreyasadchy.xtra.databinding.TvHomeRowBinding
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
@@ -31,6 +32,8 @@ class TvHome(
     private val onRowCount: (TvViewModel.Page, Int?) -> Unit,
     /** Where LEFT on the first card of a row goes: the current sidebar entry. */
     private val sidebarEntry: () -> View?,
+    /** OK held on a card. */
+    private val onMenu: (Any) -> Unit,
 ) {
     private var sections = emptyList<TvViewModel.Page>()
     private val rows = HashMap<TvViewModel.Page, Row>()
@@ -65,11 +68,11 @@ class TvHome(
                 onRowFocus(page)
             }
             onCardFocus(card, image, hasFocus)
-        }, { cardWidth(page) })
+        }, { cardWidth(page) }, onMenu)
 
         init {
             adapter.addLoadStateListener { states ->
-                val isEmpty = states.refresh is LoadState.NotLoading && adapter.itemCount == 0
+                val isEmpty = states.refresh !is LoadState.Loading && adapter.itemCount == 0
                 if (isEmpty != empty) {
                     empty = isEmpty
                     sections.indexOf(page).takeIf { it >= 0 }?.let { rowsAdapter.notifyItemChanged(it) }
@@ -121,10 +124,19 @@ class TvHome(
         override fun onBindViewHolder(holder: RowHolder, position: Int) {
             val row = rows.getValue(sections[position])
             with(holder.binding) {
+                // a followed game with nobody live (in the chosen languages) gets no row at all
+                val hidden = row.empty && row.page is TvViewModel.Page.GameRow
+                root.layoutParams.height = if (hidden) 0 else ViewGroup.LayoutParams.WRAP_CONTENT
+                root.visibility = if (hidden) View.GONE else View.VISIBLE
                 title.text = rowTitle(row.page)
                 if (cards.adapter !== row.adapter) cards.swapAdapter(row.adapter, true)
                 cards.visibility = if (row.empty) View.GONE else View.VISIBLE
                 empty.visibility = if (row.empty) View.VISIBLE else View.GONE
+                empty.setText(when (row.page) {
+                    TvViewModel.Page.Favorites -> R.string.tv_favorites_hint
+                    TvViewModel.Page.Suggestions -> R.string.tv_suggestions_hint
+                    else -> R.string.nothing_here
+                })
             }
         }
 
@@ -148,8 +160,16 @@ class TvHome(
         rowsAdapter.notifyItemRangeChanged(0, sections.size)
     }
 
+    /** Reloads a row, e.g. favorites after a change or suggestions after watching another channel. */
+    fun refresh(page: TvViewModel.Page) {
+        rows[page]?.adapter?.refresh()
+    }
+
+    /** Position of [page]'s row, or of the first row it groups (e.g. "My games live"). */
+    private fun indexOf(page: TvViewModel.Page) = sections.indexOfFirst { it == page || it.parent == page }
+
     fun scrollTo(page: TvViewModel.Page, smooth: Boolean = true) {
-        val position = sections.indexOf(page).takeIf { it >= 0 } ?: return
+        val position = indexOf(page).takeIf { it >= 0 } ?: return
         val layoutManager = list.layoutManager as LinearLayoutManager
         if (!smooth) {
             layoutManager.scrollToPositionWithOffset(position, 0)
@@ -163,16 +183,23 @@ class TvHome(
 
     /** Moves the focus into the row of [page], on its first fully visible card. */
     fun focusRow(page: TvViewModel.Page) {
-        val holder = list.findViewHolderForAdapterPosition(sections.indexOf(page)) as? RowHolder ?: return
+        // first row of the section that has cards (a game row may be empty)
+        val position = sections.indices.firstOrNull { i ->
+            (sections[i] == page || sections[i].parent == page) && rows[sections[i]]?.empty == false
+        } ?: indexOf(page)
+        val holder = list.findViewHolderForAdapterPosition(position) as? RowHolder ?: return
         val layoutManager = holder.binding.cards.layoutManager as LinearLayoutManager
-        val position = layoutManager.findFirstCompletelyVisibleItemPosition().takeIf { it >= 0 } ?: 0
-        holder.binding.cards.findViewHolderForAdapterPosition(position)?.itemView?.requestFocus()
+        val card = layoutManager.findFirstCompletelyVisibleItemPosition().takeIf { it >= 0 } ?: 0
+        holder.binding.cards.findViewHolderForAdapterPosition(card)?.itemView?.requestFocus()
     }
 
     /** Gives the focus back to the card that was focused before opening a game, a channel or a stream. */
     fun restoreFocus(): Boolean = lastFocused?.takeIf { it.isAttachedToWindow }?.requestFocus() == true
 
     private fun rowTitle(page: TvViewModel.Page): String {
+        if (page == TvViewModel.Page.Suggestions) {
+            TvSettings.suggestionsSeed(activity)?.second?.let { return activity.getString(R.string.tv_suggestions_from, it) }
+        }
         val languages = viewModel.languages.value
         return if (page.usesLanguages && languages.isNotEmpty()) {
             page.title(activity) + "  ·  " + languages.joinToString(", ") { it.uppercase() }

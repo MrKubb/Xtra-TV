@@ -25,18 +25,21 @@ class TvCard(
     val item: Any,
     val live: Boolean = false,
 ) {
-    enum class Shape(val ratio: String) { WIDE("16:9"), POSTER("3:4"), ROUND("1:1") }
+    /** [AVATAR]: a round channel picture centered in a 16:9 card (offline favorites in a row of streams). */
+    enum class Shape(val ratio: String) { WIDE("16:9"), POSTER("3:4"), ROUND("1:1"), AVATAR("16:9") }
 }
 
 /**
  * Cards for the home rows and the full screen lists.
  * [width] fixes the card width (home rows); null fills the grid cell.
  * [onFocus] gets the card and its image view, used to place the video preview.
+ * [onLongClick] is called when OK is held on a card (favorites menu).
  */
 class TvCardAdapter(
     private val onClick: (Any) -> Unit,
     private val onFocus: (TvCard, ImageView, Boolean) -> Unit,
     private val width: (() -> Int)? = null,
+    private val onLongClick: (Any) -> Unit = {},
 ) : PagingDataAdapter<TvCard, TvCardAdapter.Holder>(object : DiffUtil.ItemCallback<TvCard>() {
     override fun areItemsTheSame(oldItem: TvCard, newItem: TvCard) = oldItem.key == newItem.key
     override fun areContentsTheSame(oldItem: TvCard, newItem: TvCard) =
@@ -63,7 +66,15 @@ class TvCardAdapter(
         val card = getItem(position) ?: return
         with(holder.binding) {
             root.setOnClickListener { onClick(card.item) }
+            root.setOnLongClickListener {
+                onLongClick(card.item)
+                true
+            }
             (image.layoutParams as ConstraintLayout.LayoutParams).dimensionRatio = card.shape.ratio
+            val avatar = card.shape == TvCard.Shape.AVATAR
+            image.scaleType = if (avatar) ImageView.ScaleType.FIT_CENTER else ImageView.ScaleType.CENTER_CROP
+            val padding = if (avatar) (root.resources.displayMetrics.density * 24).toInt() else 0
+            image.setPadding(padding, padding, padding, padding)
             listOf(line1 to card.line1, line2 to card.line2, line3 to card.line3).forEach { (view, text) ->
                 view.text = text
                 view.visibility = if (text.isNullOrBlank()) View.GONE else View.VISIBLE
@@ -74,7 +85,7 @@ class TvCardAdapter(
                     data(it)
                     // live thumbnails change: refresh them every 5 minutes, like StreamsAdapter
                     if (card.live) memoryCacheKeyExtra("minutes", (System.currentTimeMillis() / 300_000L).toString())
-                    if (card.shape == TvCard.Shape.ROUND) transformations(CircleCropTransformation())
+                    if (card.shape == TvCard.Shape.ROUND || card.shape == TvCard.Shape.AVATAR) transformations(CircleCropTransformation())
                     target(image)
                 }.build())
             }
