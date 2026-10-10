@@ -597,4 +597,13 @@
     <string name="starting_proxy">Starting proxy</string>
     <string name="stopping_proxy">Stopping proxy</string>
     <string name="tv_full_interface">Full interface</string>
+    <string name="tv_followed_live">Followed live</string>
+    <string name="tv_followed_games">Followed games</string>
+    <string name="tv_past_broadcasts">Past broadcasts</string>
+    <string name="tv_followed_channels">Followed channels</string>
+    <string name="tv_top_games">Top games</string>
+    <string name="tv_top_streams">Top streams</string>
+    <string name="tv_watch_live">Watch live</string>
+    <string name="tv_all_languages">All languages</string>
+    <string name="tv_languages_value">Languages: %s</string>
 </resources>

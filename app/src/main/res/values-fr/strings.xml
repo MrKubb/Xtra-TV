@@ -578,4 +578,13 @@
     <string name="starting_proxy">Starting proxy</string>
     <string name="stopping_proxy">Stopping proxy</string>
     <string name="tv_full_interface">Interface complète</string>
+    <string name="tv_followed_live">Suivis en direct</string>
+    <string name="tv_followed_games">Jeux suivis</string>
+    <string name="tv_past_broadcasts">Rediffusions</string>
+    <string name="tv_followed_channels">Chaînes suivies</string>
+    <string name="tv_top_games">Jeux populaires</string>
+    <string name="tv_top_streams">Streams populaires</string>
+    <string name="tv_watch_live">Regarder le direct</string>
+    <string name="tv_all_languages">Toutes les langues</string>
+    <string name="tv_languages_value">Langues : %s</string>
 </resources>

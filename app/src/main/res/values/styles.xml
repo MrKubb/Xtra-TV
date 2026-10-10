@@ -1612,12 +1612,28 @@
     <style name="TvTab">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_marginBottom">8dp</item>
-        <item name="android:padding">16dp</item>
+        <item name="android:layout_marginBottom">4dp</item>
+        <item name="android:paddingHorizontal">16dp</item>
+        <item name="android:paddingVertical">10dp</item>
         <item name="android:background">@drawable/tv_focus_bg</item>
         <item name="android:focusable">true</item>
         <item name="android:clickable">true</item>
-        <item name="android:textColor">#FFFFFF</item>
-        <item name="android:textSize">22sp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:textColor">@color/tv_tab_text</item>
+        <item name="android:textSize">18sp</item>
+    </style>
+    <style name="TvButton">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginStart">10dp</item>
+        <item name="android:paddingHorizontal">18dp</item>
+        <item name="android:paddingVertical">8dp</item>
+        <item name="android:background">@drawable/tv_button_bg</item>
+        <item name="android:focusable">true</item>
+        <item name="android:clickable">true</item>
+        <item name="android:textColor">@color/tv_button_text</item>
+        <item name="android:textSize">15sp</item>
     </style>
 </resources>
