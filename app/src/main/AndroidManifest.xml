@@ -53,6 +53,7 @@
         </activity>
         <activity
             android:name=".ui.tv.TvActivity"
+            android:banner="@drawable/tv_banner"
             android:exported="true"
             android:taskAffinity="${applicationId}.tv">
             <intent-filter>
