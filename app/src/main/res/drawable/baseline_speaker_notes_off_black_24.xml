@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Material "speaker_notes_off" icon (Apache 2.0): chat hidden -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#000000"
+        android:pathData="M10.54,11l-0.54,-0.54L7.54,8 6,6.46 2.38,2.84 1.27,1.73 0,3l2.01,2.01L2,22l4,-4h9l5.73,5.73L22,22.46 17.54,18l-7,-7zM8,14L6,14v-2h2v2zM6,11L6,9l2,2L6,11zM20,2L4.08,2L10,7.92V8h0.08l3,3H18v2h-2.92l6.53,6.53c0.23,-0.36 0.39,-0.78 0.39,-1.24V4c0,-1.1 -0.9,-2 -2,-2zM18,8h-7V6h7v2z" />
+</vector>

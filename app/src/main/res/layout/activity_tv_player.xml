@@ -23,9 +23,7 @@
         android:id="@+id/chatWindow"
         android:layout_width="400dp"
         android:layout_height="match_parent"
-        android:layout_margin="24dp"
         android:background="@drawable/tv_chat_bg"
-        android:padding="2dp"
         android:visibility="gone">
 
         <FrameLayout

@@ -436,6 +436,8 @@ class TvPlayerActivity : AppCompatActivity() {
             btnFavorite.contentDescription = getString(if (favorite) R.string.tv_remove_favorite else R.string.tv_add_favorite)
             btnFavorite.setImageResource(if (favorite) R.drawable.baseline_favorite_black_24 else R.drawable.baseline_favorite_border_black_24)
             btnChat.contentDescription = getString(if (chatVisible) R.string.tv_player_hide_chat else R.string.tv_player_show_chat)
+            // crossed out icon while the chat is hidden
+            btnChat.setImageResource(if (chatVisible) R.drawable.baseline_speaker_notes_black_24 else R.drawable.baseline_speaker_notes_off_black_24)
             // refresh the label of the focused button (e.g. after toggling it)
             root.findFocus()?.contentDescription?.let { buttonLabel.text = it }
         }
