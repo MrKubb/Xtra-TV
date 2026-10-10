@@ -277,6 +277,21 @@ class TvSettings(
 
         fun isTvDevice(context: Context) = context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
 
+        private const val KEY_TV_DEFAULTS = "tv_defaults_version"
+
+        /**
+         * One-time defaults of the TV interface, applied to Xtra's own settings:
+         * streams start at the best quality available ("Source" in Xtra). Still changeable afterwards.
+         */
+        fun applyTvDefaults(context: Context) {
+            val prefs = context.prefs()
+            if (prefs.getInt(KEY_TV_DEFAULTS, 0) >= 1) return
+            prefs.edit {
+                putString(C.PLAYER_DEFAULT_QUALITY, "Source")
+                putInt(KEY_TV_DEFAULTS, 1)
+            }
+        }
+
         /** Whether the app launcher should open the TV interface instead of Xtra's (on by default on TVs). */
         fun startOnTv(context: Context) = context.prefs().getBoolean(KEY_START_ON_TV, isTvDevice(context))
 

@@ -421,9 +421,12 @@ class TvPlayerActivity : AppCompatActivity() {
             "${height}p" + (format.frameRate.takeIf { it > 0 }?.let { Math.round(it).toString() } ?: "")
         }
         val chosen = service?.quality?.let { qualityName(it) }
+        // a fixed resolution is just shown as played; Auto, Source... also show what they picked
+        val fixed = service?.quality?.name?.firstOrNull()?.isDigit() == true
         val text = when {
             chosen == null -> playing
-            playing == null || chosen == playing -> chosen
+            playing == null -> chosen
+            fixed -> playing
             else -> "$chosen · $playing"
         }
         binding.qualityLabel.text = text

@@ -102,6 +102,7 @@ class TvActivity : AppCompatActivity() {
             finish()
             return
         }
+        TvSettings.applyTvDefaults(this)
         applyTheme()
         binding = ActivityTvBinding.inflate(layoutInflater)
         setContentView(binding.root)
