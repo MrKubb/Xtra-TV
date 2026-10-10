@@ -128,7 +128,11 @@ abstract class PlayerFragment : BaseNetworkFragment(), RadioButtonDialogFragment
 
     private val backPressedCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
-            minimize()
+            if ((activity as? MainActivity)?.fromTv == true) {
+                requireActivity().finish()
+            } else {
+                minimize()
+            }
         }
     }
 

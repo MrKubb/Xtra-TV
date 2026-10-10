@@ -106,6 +106,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         const val KEY_VIDEO = "video"
+        const val KEY_FROM_TV = "fromTv"
 
         const val INTENT_INSTALL_UPDATE = "com.github.andreyasadchy.xtra.INSTALL_UPDATE"
         const val INTENT_LIVE_NOTIFICATION = "com.github.andreyasadchy.xtra.LIVE_NOTIFICATION"
@@ -674,7 +675,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Opened from the TV home screen: back from the player returns there instead of the mobile UI. */
+    var fromTv = false
+
     private fun handleIntent(intent: Intent?) {
+        fromTv = intent?.getBooleanExtra(KEY_FROM_TV, false) == true
         when (intent?.action) {
             Intent.ACTION_VIEW -> {
                 val url = intent.data?.toString()
