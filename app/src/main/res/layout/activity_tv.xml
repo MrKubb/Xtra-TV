@@ -74,11 +74,6 @@
                 android:id="@+id/tabSettings"
                 style="@style/TvTab"
                 android:text="@string/settings" />
-
-            <TextView
-                android:id="@+id/tabFullUi"
-                style="@style/TvTab"
-                android:text="@string/tv_full_interface" />
         </LinearLayout>
     </ScrollView>
 
@@ -86,7 +81,6 @@
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1"
-        android:clipChildren="false"
         android:orientation="vertical"
         android:paddingHorizontal="20dp"
         android:paddingTop="20dp">
@@ -163,8 +157,7 @@
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
-            android:clipChildren="false">
+            android:layout_weight="1">
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/grid"
@@ -172,7 +165,26 @@
                 android:layout_height="match_parent"
                 android:clipChildren="false"
                 android:clipToPadding="false"
-                android:paddingVertical="8dp" />
+                android:fadingEdgeLength="24dp"
+                android:paddingVertical="8dp"
+                android:requiresFadingEdge="vertical" />
+
+            <ScrollView
+                android:id="@+id/settingsScroll"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fadingEdgeLength="24dp"
+                android:requiresFadingEdge="vertical"
+                android:scrollbars="none"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:id="@+id/settingsList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingBottom="24dp" />
+            </ScrollView>
 
             <ProgressBar
                 android:id="@+id/progress"

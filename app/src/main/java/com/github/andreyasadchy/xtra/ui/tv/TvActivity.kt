@@ -1,6 +1,7 @@
 package com.github.andreyasadchy.xtra.ui.tv
 
 import android.content.Intent
+import android.graphics.Rect
 import android.os.Bundle
 import android.os.Parcelable
 import android.text.format.DateUtils
@@ -95,6 +96,13 @@ class TvActivity : AppCompatActivity() {
         startActivity(Intent(this, TvActivity::class.java))
     }
 
+    /** Xtra's settings ask for a recreate when something visible changed. */
+    private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (it.resultCode == RESULT_OK) recreate()
+    }
+
+    private lateinit var settings: TvSettings
+
     private val isLoggedIn: Boolean
         get() = !TwitchApiHelper.getGQLHeaders(this, true)[C.HEADER_TOKEN].isNullOrBlank() ||
                 !TwitchApiHelper.getHelixHeaders(this)[C.HEADER_TOKEN].isNullOrBlank()
@@ -105,7 +113,20 @@ class TvActivity : AppCompatActivity() {
         binding = ActivityTvBinding.inflate(layoutInflater)
         setContentView(binding.root)
         with(binding) {
-            layoutManager = GridLayoutManager(this@TvActivity, 4)
+            layoutManager = object : GridLayoutManager(this@TvActivity, 4) {
+                // Keep the focused row centered (like Leanback grids) instead of scrolling it just inside the edge.
+                override fun requestChildRectangleOnScreen(parent: RecyclerView, child: View, rect: Rect, immediate: Boolean, focusedChildVisible: Boolean): Boolean {
+                    val dy = child.top + child.height / 2 - parent.height / 2
+                    if (immediate) parent.scrollBy(0, dy) else parent.smoothScrollBy(0, dy)
+                    return true
+                }
+
+                // DOWN on the last row stays there instead of jumping out of the grid (e.g. into the sidebar).
+                override fun onInterceptFocusSearch(focused: View, direction: Int): View? {
+                    if (direction != View.FOCUS_DOWN || focused.layoutParams !is RecyclerView.LayoutParams) return null
+                    return focused.takeIf { getPosition(it) / spanCount == (itemCount - 1) / spanCount }
+                }
+            }
             grid.layoutManager = layoutManager
             grid.adapter = adapter
             grid.itemAnimator = null
@@ -118,7 +139,12 @@ class TvActivity : AppCompatActivity() {
                 tabFollowedChannels to TvViewModel.Page.FollowedChannels,
                 tabTopGames to TvViewModel.Page.TopGames,
                 tabTopStreams to TvViewModel.Page.TopStreams,
+                tabSettings to TvViewModel.Page.Settings,
             )
+            settings = TvSettings(this@TvActivity, settingsList, onHomeChanged = ::applyHomeSettings) {
+                settingsLauncher.launch(Intent(this@TvActivity, SettingsActivity::class.java))
+            }
+            applyHomeSettings()
             tabs.forEach { (view, page) ->
                 view.setOnClickListener {
                     savedPositions.clear()
@@ -146,8 +172,6 @@ class TvActivity : AppCompatActivity() {
                     restartLauncher.launch(Intent(this@TvActivity, TvLoginActivity::class.java))
                 }
             }
-            tabSettings.setOnClickListener { restartLauncher.launch(Intent(this@TvActivity, SettingsActivity::class.java)) }
-            tabFullUi.setOnClickListener { startActivity(Intent(this@TvActivity, MainActivity::class.java)) }
 
             btnLanguage.setOnClickListener { showLanguageDialog() }
             btnLive.setOnClickListener {
@@ -198,11 +222,12 @@ class TvActivity : AppCompatActivity() {
         })
 
         adapter.addLoadStateListener { states ->
-            val loading = states.refresh is LoadState.Loading
-            binding.progress.visibility = if (loading && adapter.itemCount == 0) View.VISIBLE else View.GONE
-            binding.empty.visibility = if (!loading && adapter.itemCount == 0) View.VISIBLE else View.GONE
             val page = viewModel.stack.value.last()
-            binding.title.text = if (states.append.endOfPaginationReached && adapter.itemCount > 0) {
+            val loading = states.refresh is LoadState.Loading
+            val isList = page != TvViewModel.Page.Settings
+            binding.progress.visibility = if (isList && loading && adapter.itemCount == 0) View.VISIBLE else View.GONE
+            binding.empty.visibility = if (isList && !loading && adapter.itemCount == 0) View.VISIBLE else View.GONE
+            binding.title.text = if (isList && states.append.endOfPaginationReached && adapter.itemCount > 0) {
                 "${pageTitle(page)} (${adapter.itemCount})"
             } else {
                 pageTitle(page)
@@ -234,6 +259,14 @@ class TvActivity : AppCompatActivity() {
         return false
     }
 
+    /** Shows only the sidebar sections enabled in the TV settings. */
+    private fun applyHomeSettings() {
+        val hidden = TvSettings.hiddenSections(this)
+        tabs.forEach { (view, page) ->
+            page.key?.let { view.visibility = if (it in hidden) View.GONE else View.VISIBLE }
+        }
+    }
+
     private fun activeTab(): View? {
         val root = viewModel.stack.value.first()
         return tabs.entries.firstOrNull { it.value::class == root::class }?.key
@@ -253,18 +286,23 @@ class TvActivity : AppCompatActivity() {
             btnLanguage.visibility = if (page.usesLanguages) View.VISIBLE else View.GONE
             btnLanguage.text = getString(R.string.tv_languages_value, viewModel.languages.value.joinToString(", ") { it.uppercase() }.ifEmpty { getString(R.string.tv_all_languages) })
             btnLive.visibility = if ((page as? TvViewModel.Page.Channel)?.user?.isLive == true) View.VISIBLE else View.GONE
-            layoutManager.spanCount = page.columns
-            if (pendingRestore == null) layoutManager.scrollToPosition(0)
+            val isSettings = page == TvViewModel.Page.Settings
+            grid.visibility = if (isSettings) View.GONE else View.VISIBLE
+            settingsScroll.visibility = if (isSettings) View.VISIBLE else View.GONE
+            if (isSettings) {
+                settings.show()
+                settingsScroll.scrollTo(0, 0)
+            } else {
+                layoutManager.spanCount = (page.columns + TvSettings.columnOffset(this@TvActivity)).coerceAtLeast(2)
+                if (pendingRestore == null) layoutManager.scrollToPosition(0)
+            }
         }
     }
 
     private fun pageTitle(page: TvViewModel.Page): String = when (page) {
-        TvViewModel.Page.Following -> getString(R.string.tv_followed_live)
-        TvViewModel.Page.FollowedGames -> getString(R.string.tv_followed_games)
-        TvViewModel.Page.FollowedVideos -> getString(R.string.tv_past_broadcasts)
-        TvViewModel.Page.FollowedChannels -> getString(R.string.tv_followed_channels)
-        TvViewModel.Page.TopGames -> getString(R.string.tv_top_games)
-        TvViewModel.Page.TopStreams -> getString(R.string.tv_top_streams)
+        TvViewModel.Page.Following, TvViewModel.Page.FollowedGames, TvViewModel.Page.FollowedVideos,
+        TvViewModel.Page.FollowedChannels, TvViewModel.Page.TopGames, TvViewModel.Page.TopStreams -> getString(page.title)
+        TvViewModel.Page.Settings -> getString(R.string.settings)
         is TvViewModel.Page.Game -> page.game.name.orEmpty()
         is TvViewModel.Page.Channel -> page.user.name ?: page.user.login.orEmpty()
         is TvViewModel.Page.Search -> page.query.ifEmpty { getString(R.string.search) }
@@ -316,26 +354,44 @@ class TvViewModel(private val app: XtraApp) : ViewModel() {
 
     enum class SearchType { STREAMS, CHANNELS, GAMES }
 
-    sealed class Page(val columns: Int, val usesLanguages: Boolean = false) {
-        data object Following : Page(4)
-        data object FollowedGames : Page(6)
-        data object FollowedVideos : Page(4)
-        data object FollowedChannels : Page(6)
-        data object TopGames : Page(6)
-        data object TopStreams : Page(4, usesLanguages = true)
+    /** [key] and [title] are set on the sidebar sections that can be hidden or used as start page. */
+    sealed class Page(val columns: Int, val usesLanguages: Boolean = false, val key: String? = null, val title: Int = 0) {
+        data object Following : Page(4, key = "following", title = R.string.tv_followed_live)
+        data object FollowedGames : Page(6, key = "followed_games", title = R.string.tv_followed_games)
+        data object FollowedVideos : Page(4, key = "followed_videos", title = R.string.tv_past_broadcasts)
+        data object FollowedChannels : Page(6, key = "followed_channels", title = R.string.tv_followed_channels)
+        data object TopGames : Page(6, key = "top_games", title = R.string.tv_top_games)
+        data object TopStreams : Page(4, usesLanguages = true, key = "top_streams", title = R.string.tv_top_streams)
+        data object Settings : Page(1)
         class Game(val game: com.github.andreyasadchy.xtra.model.ui.Game) : Page(4, usesLanguages = true)
         class Channel(val user: User) : Page(4)
         data class Search(val query: String, val type: SearchType) : Page(if (type == SearchType.STREAMS) 4 else 6)
+
+        companion object {
+            val roots: List<Page>
+                get() = listOf(Following, FollowedGames, FollowedVideos, FollowedChannels, TopGames, TopStreams)
+        }
     }
 
     /** Navigation stack: the first page is the sidebar tab, the rest are drill-downs (game, channel). */
-    val stack = MutableStateFlow<List<Page>>(listOf(
-        if (app.tokenPrefs().getString(C.USER_ID, null) != null) Page.Following else Page.TopStreams
-    ))
+    val stack = MutableStateFlow<List<Page>>(listOf(startPage()))
     val languages = MutableStateFlow(app.prefs().getStringSet(KEY_LANGUAGES, null).orEmpty())
     val current = combine(stack, languages) { stack, languages -> stack.last() to languages }
 
     private val flows = HashMap<Pair<Page, Set<String>>, Flow<PagingData<TvCard>>>()
+
+    /** Start page from the TV settings, or followed streams when logged in, else top streams. */
+    private fun startPage(): Page {
+        val hidden = TvSettings.hiddenSections(app)
+        val visible = Page.roots.filter { it.key !in hidden }
+        val chosen = app.prefs().getString(TvSettings.KEY_START_PAGE, TvSettings.START_AUTO)
+        val loggedIn = app.tokenPrefs().getString(C.USER_ID, null) != null
+        return visible.find { it.key == chosen }
+            ?: visible.find { it == Page.Following && loggedIn }
+            ?: visible.find { it == Page.TopStreams }
+            ?: visible.firstOrNull()
+            ?: Page.TopStreams
+    }
 
     fun setLanguages(value: Set<String>) {
         app.prefs().edit { putStringSet(KEY_LANGUAGES, value) }
@@ -361,6 +417,7 @@ class TvViewModel(private val app: XtraApp) : ViewModel() {
         val gqlLanguages = languages.toList().ifEmpty { null }
         val gqlQueryLanguages = gqlLanguages?.mapNotNull { l -> Language.entries.find { it.rawValue == l } }
         return when (page) {
+            Page.Settings -> flowOf(PagingData.empty())
             Page.Following -> pager(::streamCard) {
                 FollowedStreamsDataSource(userId, module.localChannelFollowsRepository, gqlAuth, module.graphQLRepository, helix, module.helixRepository, integrity, network)
             }

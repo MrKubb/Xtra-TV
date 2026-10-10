@@ -88,6 +88,8 @@ import com.github.andreyasadchy.xtra.ui.saved.SavedPagerFragment
 import com.github.andreyasadchy.xtra.ui.saved.downloads.DownloadsFragment
 import com.github.andreyasadchy.xtra.ui.team.TeamFragmentDirections
 import com.github.andreyasadchy.xtra.ui.top.TopStreamsFragmentDirections
+import com.github.andreyasadchy.xtra.ui.tv.TvActivity
+import com.github.andreyasadchy.xtra.ui.tv.TvSettings
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
 import com.github.andreyasadchy.xtra.util.applyTheme
@@ -135,6 +137,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null && intent?.action == Intent.ACTION_MAIN && TvSettings.startOnTv(this)) {
+            startActivity(Intent(this, TvActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            finish()
+            return
+        }
         prefs = prefs()
         migrateSettings()
         if (tokenPrefs().getLong(C.UPDATE_LAST_CHECKED, 0) <= 0L) {
