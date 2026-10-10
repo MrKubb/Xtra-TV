@@ -87,4 +87,4 @@ Like Xtra, Xtra TV is licensed under the [GNU Affero General Public License v3.0
 
 ## Disclaimer
 
-The Android TV interface of this fork was made entirely with the help of AI (Claude).
+The Android TV interface of this fork was made entirely with the help of AI.
