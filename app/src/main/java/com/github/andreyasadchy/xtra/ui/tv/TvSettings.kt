@@ -25,6 +25,7 @@ import com.github.andreyasadchy.xtra.util.prefs
 class TvSettings(
     private val activity: AppCompatActivity,
     private val container: LinearLayout,
+    private val viewModel: TvViewModel,
     private val onHomeChanged: () -> Unit,
     private val openXtraSettings: () -> Unit,
 ) {
@@ -36,17 +37,31 @@ class TvSettings(
         container.removeAllViews()
 
         section(R.string.tv_section_home)
-        val pages = TvViewModel.Page.roots
+        val pages = TvViewModel.Page.sections(activity)
         choice(R.string.tv_start_page, KEY_START_PAGE, START_AUTO,
-            listOf(activity.getString(R.string.tv_start_auto)) + pages.map { activity.getString(it.title) },
-            listOf(START_AUTO) + pages.map { it.key.orEmpty() },
-            onHomeChanged)
+            listOf(activity.getString(R.string.tv_start_auto)) + pages.map { it.title(activity) },
+            listOf(START_AUTO) + pages.map { it.key.orEmpty() })
         val hidden = hiddenSections(activity)
         row(R.string.tv_sections, "${pages.count { it.key !in hidden }} / ${pages.size}") { sectionsDialog() }
+        val tabs = languageTabs(activity)
+        row(R.string.tv_language_tabs, tabs.joinToString(", ") { it.uppercase() }.ifEmpty { activity.getString(R.string.tv_none) }) {
+            TvLanguages.showDialog(activity, activity.getString(R.string.tv_language_tabs), tabs) {
+                prefs.edit { putString(KEY_LANGUAGE_TABS, it.joinToString(",")) }
+                show()
+                onHomeChanged()
+            }
+        }
+        row(R.string.tv_top_streams_languages, viewModel.languages.value.joinToString(", ") { it.uppercase() }.ifEmpty { activity.getString(R.string.tv_all_languages) }) {
+            TvLanguages.showDialog(activity, activity.getString(R.string.tv_top_streams_languages), viewModel.languages.value) {
+                viewModel.setLanguages(it.toSet())
+                show()
+            }
+        }
         choice(R.string.tv_card_size, KEY_CARD_SIZE, SIZE_MEDIUM,
             listOf(R.string.tv_size_small, R.string.tv_size_medium, R.string.tv_size_large).map { activity.getString(it) },
             listOf(SIZE_SMALL, SIZE_MEDIUM, SIZE_LARGE),
             onHomeChanged)
+        toggle(R.string.tv_preview, KEY_PREVIEW, true)
         toggle(R.string.tv_start_on_tv, KEY_START_ON_TV, isTvDevice(activity))
 
         section(R.string.tv_section_general)
@@ -123,12 +138,12 @@ class TvSettings(
     }
 
     private fun sectionsDialog() {
-        val pages = TvViewModel.Page.roots
+        val pages = TvViewModel.Page.sections(activity)
         val hidden = hiddenSections(activity)
         val checked = pages.map { it.key !in hidden }.toBooleanArray()
         activity.getAlertDialogBuilder()
             .setTitle(R.string.tv_sections)
-            .setMultiChoiceItems(pages.map { activity.getString(it.title) }.toTypedArray(), checked) { _, which, isChecked -> checked[which] = isChecked }
+            .setMultiChoiceItems(pages.map { it.title(activity) }.toTypedArray(), checked) { _, which, isChecked -> checked[which] = isChecked }
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 prefs.edit { putStringSet(KEY_HIDDEN_SECTIONS, pages.filterIndexed { i, _ -> !checked[i] }.mapNotNull { it.key }.toSet()) }
                 show()
@@ -143,6 +158,8 @@ class TvSettings(
         const val KEY_HIDDEN_SECTIONS = "tv_hidden_sections"
         const val KEY_CARD_SIZE = "tv_card_size"
         const val KEY_START_ON_TV = "tv_start_on_tv"
+        const val KEY_LANGUAGE_TABS = "tv_language_tabs"
+        const val KEY_PREVIEW = "tv_preview"
         const val START_AUTO = "auto"
         const val SIZE_SMALL = "small"
         const val SIZE_MEDIUM = "medium"
@@ -155,8 +172,16 @@ class TvSettings(
 
         fun hiddenSections(context: Context): Set<String> = context.prefs().getStringSet(KEY_HIDDEN_SECTIONS, null).orEmpty()
 
+        /** Languages that get their own home row and sidebar entry, in the order they were picked. */
+        fun languageTabs(context: Context): List<String> =
+            context.prefs().getString(KEY_LANGUAGE_TABS, null)?.split(',')?.filter { it.isNotBlank() }.orEmpty()
+
+        fun previewEnabled(context: Context) = context.prefs().getBoolean(KEY_PREVIEW, true)
+
+        fun cardSize(context: Context) = context.prefs().getString(KEY_CARD_SIZE, SIZE_MEDIUM)
+
         /** Extra columns for the selected card size: small cards = more per row. */
-        fun columnOffset(context: Context) = when (context.prefs().getString(KEY_CARD_SIZE, SIZE_MEDIUM)) {
+        fun columnOffset(context: Context) = when (cardSize(context)) {
             SIZE_SMALL -> 1
             SIZE_LARGE -> -1
             else -> 0

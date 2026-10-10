@@ -602,7 +602,7 @@
     <string name="tv_section_playback">Playback</string>
     <string name="tv_section_chat">Chat</string>
     <string name="tv_section_advanced">Advanced</string>
-    <string name="tv_start_page">Start page</string>
+    <string name="tv_start_page">Start section</string>
     <string name="tv_start_auto">Automatic</string>
     <string name="tv_sections">Menu sections</string>
     <string name="tv_card_size">Card size</string>
@@ -613,6 +613,11 @@
     <string name="tv_on">On</string>
     <string name="tv_off">Off</string>
     <string name="tv_all_settings">All Xtra settings</string>
+    <string name="tv_home">Home</string>
+    <string name="tv_language_tabs">Language rows</string>
+    <string name="tv_top_streams_languages">Top streams languages</string>
+    <string name="tv_none">None</string>
+    <string name="tv_preview">Video preview (with sound)</string>
     <string name="tv_followed_live">Followed live</string>
     <string name="tv_followed_games">Followed games</string>
     <string name="tv_past_broadcasts">Past broadcasts</string>

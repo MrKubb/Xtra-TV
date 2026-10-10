@@ -583,7 +583,7 @@
     <string name="tv_section_playback">Lecture</string>
     <string name="tv_section_chat">Chat</string>
     <string name="tv_section_advanced">Avancé</string>
-    <string name="tv_start_page">Page de démarrage</string>
+    <string name="tv_start_page">Section de démarrage</string>
     <string name="tv_start_auto">Automatique</string>
     <string name="tv_sections">Sections du menu</string>
     <string name="tv_card_size">Taille des cartes</string>
@@ -594,6 +594,11 @@
     <string name="tv_on">Activé</string>
     <string name="tv_off">Désactivé</string>
     <string name="tv_all_settings">Tous les paramètres Xtra</string>
+    <string name="tv_home">Accueil</string>
+    <string name="tv_language_tabs">Rangées par langue</string>
+    <string name="tv_top_streams_languages">Langues des streams populaires</string>
+    <string name="tv_none">Aucune</string>
+    <string name="tv_preview">Aperçu vidéo (avec son)</string>
     <string name="tv_followed_live">Suivis en direct</string>
     <string name="tv_followed_games">Jeux suivis</string>
     <string name="tv_past_broadcasts">Rediffusions</string>
