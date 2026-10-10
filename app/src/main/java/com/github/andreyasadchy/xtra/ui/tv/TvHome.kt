@@ -9,6 +9,7 @@ import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.paging.LoadState
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
@@ -38,6 +39,7 @@ class TvHome(
     private var sections = emptyList<TvViewModel.Page>()
     private val rows = HashMap<TvViewModel.Page, Row>()
     private var lastFocused: View? = null
+    private var pendingFocus: TvViewModel.Page? = null
 
     init {
         list.layoutManager = object : LinearLayoutManager(activity) {
@@ -78,6 +80,7 @@ class TvHome(
                     sections.indexOf(page).takeIf { it >= 0 }?.let { rowsAdapter.notifyItemChanged(it) }
                 }
                 onRowCount(page, adapter.itemCount.takeIf { states.append.endOfPaginationReached && it > 0 })
+                if (states.refresh is LoadState.NotLoading && adapter.itemCount > 0) tryPendingFocus()
             }
         }
 
@@ -150,9 +153,20 @@ class TvHome(
         if (pages == sections && !rebuild) return
         rows.keys.filter { rebuild || it !in pages }.forEach { rows.remove(it)?.job?.cancel() }
         pages.forEach { rows.getOrPut(it) { Row(it) } }
+        val old = sections
         sections = pages
         list.setItemViewCacheSize(pages.size)
-        list.adapter = rowsAdapter
+        if (rebuild || list.adapter == null) {
+            list.adapter = rowsAdapter
+        } else {
+            // only insert, remove or move the rows that changed, so the others keep their cards and the focus
+            DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+                override fun getOldListSize() = old.size
+                override fun getNewListSize() = pages.size
+                override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int) = old[oldItemPosition] == pages[newItemPosition]
+                override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int) = true
+            }).dispatchUpdatesTo(rowsAdapter)
+        }
     }
 
     /** Refreshes the row titles (top streams shows its language filter). */
@@ -181,16 +195,35 @@ class TvHome(
         }.apply { targetPosition = position })
     }
 
+    /** Moves the focus into the row of [page] as soon as it has cards (start of the app). */
+    fun focusWhenLoaded(page: TvViewModel.Page) {
+        pendingFocus = page
+        tryPendingFocus()
+    }
+
+    fun cancelPendingFocus() {
+        pendingFocus = null
+    }
+
+    private fun tryPendingFocus(attempt: Int = 0) {
+        val page = pendingFocus ?: return
+        // the row's cards are laid out a frame or two after their data arrives
+        list.postDelayed({
+            if (pendingFocus == page && !focusRow(page) && attempt < 10) tryPendingFocus(attempt + 1)
+            else if (pendingFocus == page) pendingFocus = null
+        }, 100)
+    }
+
     /** Moves the focus into the row of [page], on its first fully visible card. */
-    fun focusRow(page: TvViewModel.Page) {
+    fun focusRow(page: TvViewModel.Page): Boolean {
         // first row of the section that has cards (a game row may be empty)
         val position = sections.indices.firstOrNull { i ->
             (sections[i] == page || sections[i].parent == page) && rows[sections[i]]?.empty == false
         } ?: indexOf(page)
-        val holder = list.findViewHolderForAdapterPosition(position) as? RowHolder ?: return
+        val holder = list.findViewHolderForAdapterPosition(position) as? RowHolder ?: return false
         val layoutManager = holder.binding.cards.layoutManager as LinearLayoutManager
         val card = layoutManager.findFirstCompletelyVisibleItemPosition().takeIf { it >= 0 } ?: 0
-        holder.binding.cards.findViewHolderForAdapterPosition(card)?.itemView?.requestFocus()
+        return holder.binding.cards.findViewHolderForAdapterPosition(card)?.itemView?.requestFocus() == true
     }
 
     /** Gives the focus back to the card that was focused before opening a game, a channel or a stream. */

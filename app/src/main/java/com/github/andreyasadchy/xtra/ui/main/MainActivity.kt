@@ -109,6 +109,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val KEY_VIDEO = "video"
         const val KEY_FROM_TV = "fromTv"
+        const val KEY_TV_SETUP = "tvSetup"
 
         const val INTENT_INSTALL_UPDATE = "com.github.andreyasadchy.xtra.INSTALL_UPDATE"
         const val INTENT_LIVE_NOTIFICATION = "com.github.andreyasadchy.xtra.LIVE_NOTIFICATION"
@@ -137,7 +138,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (savedInstanceState == null && intent?.action == Intent.ACTION_MAIN && TvSettings.startOnTv(this)) {
+        // TV interface: once Xtra has been set up (settings, default proxies...), go straight to it
+        if (savedInstanceState == null && intent?.action == Intent.ACTION_MAIN && TvSettings.startOnTv(this) && prefs().getInt(C.SETTINGS_VERSION, 0) > 0) {
             startActivity(Intent(this, TvActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             finish()
             return
@@ -594,6 +596,12 @@ class MainActivity : AppCompatActivity() {
                     )
                     .build()
             )
+        }
+        // first launch from the TV interface: the setup above is done (this activity stays alive in the
+        // background so it can finish saving it), now open the TV interface
+        if (savedInstanceState == null && (intent?.getBooleanExtra(KEY_TV_SETUP, false) == true ||
+                    (intent?.action == Intent.ACTION_MAIN && TvSettings.startOnTv(this)))) {
+            startActivity(Intent(this, TvActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
     }
 

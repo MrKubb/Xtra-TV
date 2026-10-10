@@ -60,6 +60,7 @@ class TvActivity : AppCompatActivity() {
 
     /** Sidebar entries and what they show. */
     private val tabs = LinkedHashMap<View, Page>()
+    private var sidebarOpen = true
     private val sectionCounts = HashMap<Page, Int>()
 
     /** Scroll position + focused card per full screen list, restored when coming back to it. */
@@ -83,6 +84,12 @@ class TvActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Xtra never ran on this device: let it set itself up once (settings, default ad-blocking proxies)
+        if (prefs().getInt(C.SETTINGS_VERSION, 0) == 0) {
+            startActivity(Intent(this, MainActivity::class.java).putExtra(MainActivity.KEY_TV_SETUP, true))
+            finish()
+            return
+        }
         applyTheme()
         binding = ActivityTvBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -156,6 +163,7 @@ class TvActivity : AppCompatActivity() {
             }
 
             root.viewTreeObserver.addOnGlobalFocusChangeListener { old, new ->
+                setSidebarOpen(new != null && sidebar.contains(new))
                 if (new == null || !sidebar.contains(new)) return@addOnGlobalFocusChangeListener
                 // Entering the sidebar from the content lands on the current entry, without changing the page.
                 val active = activeTab()
@@ -215,6 +223,17 @@ class TvActivity : AppCompatActivity() {
         }
         home.scrollTo(viewModel.section, smooth = false)
         activeTab()?.requestFocus()
+        // start in the content, the sidebar slides away
+        home.focusWhenLoaded(viewModel.section)
+    }
+
+    /** The sidebar slides over the content while it has the focus, and away when the content has it. */
+    private fun setSidebarOpen(open: Boolean) {
+        if (open == sidebarOpen) return
+        sidebarOpen = open
+        val width = binding.sidebarPanel.width.takeIf { it > 0 } ?: (250 * resources.displayMetrics.density).toInt()
+        binding.sidebarPanel.animate().translationX(if (open) 0f else -width.toFloat()).setDuration(200).start()
+        binding.content.animate().alpha(if (open) 0.4f else 1f).setDuration(200).start()
     }
 
     override fun onRestart() {
@@ -300,6 +319,7 @@ class TvActivity : AppCompatActivity() {
         if (page.isSection) {
             // already there, e.g. coming back to the sidebar from a game page
             if (stack.first() == Page.Home && viewModel.section == page) return
+            home.cancelPendingFocus()
             viewModel.section = page
             if (stack != listOf(Page.Home)) showRoot(Page.Home)
             home.scrollTo(page)
@@ -460,6 +480,10 @@ class TvActivity : AppCompatActivity() {
 
     /** Streams opened from the TV interface start full screen: the chat only shows up when asked for. */
     private fun openFullScreen() {
-        prefs().edit { putBoolean(C.KEY_CHAT_OPENED, false) }
+        prefs().edit {
+            putBoolean(C.KEY_CHAT_OPENED, false)
+            // no picture-in-picture on a TV
+            if (TvSettings.isTvDevice(this@TvActivity)) putBoolean(C.PLAYER_PICTURE_IN_PICTURE, false)
+        }
     }
 }

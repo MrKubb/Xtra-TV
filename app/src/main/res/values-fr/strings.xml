@@ -606,6 +606,7 @@
     <string name="tv_suggestions_hint">Regarde un stream pour avoir des suggestions</string>
     <string name="tv_followed_game_rows">Mes jeux en direct</string>
     <string name="tv_offline">Hors ligne</string>
+    <string name="tv_live_badge">LIVE</string>
     <string name="tv_add_favorite">Ajouter aux favoris</string>
     <string name="tv_remove_favorite">Retirer des favoris</string>
     <string name="tv_open_channel">Voir la chaîne</string>

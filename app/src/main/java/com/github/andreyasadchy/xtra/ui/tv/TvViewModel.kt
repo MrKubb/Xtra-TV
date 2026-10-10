@@ -309,15 +309,15 @@ class TvViewModel(private val app: XtraApp) : ViewModel() {
 
     private fun streamCard(it: Stream) = TvCard(
         key = "s" + (it.id ?: it.channelLogin), image = it.thumbnail, shape = TvCard.Shape.WIDE, live = true,
-        line1 = it.channelName ?: it.channelLogin, line2 = it.title,
-        line3 = listOfNotNull(it.viewerCount?.let { v -> "● " + TwitchApiHelper.formatCount(v, true) }, it.gameName).joinToString("  ·  "),
+        line1 = it.channelName ?: it.channelLogin, line2 = it.gameName, line3 = it.title,
+        avatar = it.channelImage, viewers = it.viewerCount, startedAt = it.createdAt,
         item = it,
     )
 
     private fun videoCard(it: Video) = TvCard(
         key = "v" + it.id, image = it.thumbnail, shape = TvCard.Shape.WIDE,
-        line1 = it.title, line2 = it.channelName ?: it.channelLogin,
-        line3 = listOfNotNull(it.durationSeconds?.let { d -> DateUtils.formatElapsedTime(d.toLong()) }, it.gameName).joinToString("  ·  "),
+        line1 = it.channelName ?: it.channelLogin, line2 = it.gameName, line3 = it.title,
+        avatar = it.channelImage, duration = it.durationSeconds?.let { d -> DateUtils.formatElapsedTime(d.toLong()) },
         item = it,
     )
 

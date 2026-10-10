@@ -10,60 +10,15 @@
         android:layout_height="match_parent"
         android:orientation="horizontal">
 
-        <ScrollView
-            android:layout_width="250dp"
-            android:layout_height="match_parent"
-            android:background="#18181B"
-            android:scrollbars="none">
-
-            <LinearLayout
-                android:id="@+id/sidebar"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingHorizontal="16dp"
-                android:paddingVertical="20dp">
-
-                <TextView
-                    android:id="@+id/tabSearch"
-                    style="@style/TvTab"
-                    android:layout_marginBottom="16dp"
-                    android:drawablePadding="12dp"
-                    android:text="@string/search"
-                    app:drawableStartCompat="@drawable/baseline_search_black_24"
-                    app:drawableTint="@color/tv_tab_text" />
-
-                <!-- one entry per home section, built from the TV settings -->
-                <LinearLayout
-                    android:id="@+id/sectionTabs"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginVertical="12dp"
-                    android:background="#2E2E35" />
-
-                <TextView
-                    android:id="@+id/tabAccount"
-                    style="@style/TvTab"
-                    android:text="@string/log_in" />
-
-                <TextView
-                    android:id="@+id/tabSettings"
-                    style="@style/TvTab"
-                    android:text="@string/settings" />
-            </LinearLayout>
-        </ScrollView>
 
         <LinearLayout
+            android:id="@+id/content"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:paddingHorizontal="20dp"
+            android:paddingStart="40dp"
+            android:paddingEnd="20dp"
             android:paddingTop="20dp">
 
             <LinearLayout
@@ -197,6 +152,57 @@
             </FrameLayout>
         </LinearLayout>
     </LinearLayout>
+
+    <!-- sidebar: slides over the content when focused, hidden otherwise -->
+    <ScrollView
+        android:id="@+id/sidebarPanel"
+        android:layout_width="250dp"
+        android:layout_height="match_parent"
+        android:background="#F218181B"
+        android:elevation="8dp"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:id="@+id/sidebar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="20dp">
+
+            <TextView
+                android:id="@+id/tabSearch"
+                style="@style/TvTab"
+                android:layout_marginBottom="16dp"
+                android:drawablePadding="12dp"
+                android:text="@string/search"
+                app:drawableStartCompat="@drawable/baseline_search_black_24"
+                app:drawableTint="@color/tv_tab_text" />
+
+            <!-- one entry per home section, built from the TV settings -->
+            <LinearLayout
+                android:id="@+id/sectionTabs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginVertical="12dp"
+                android:background="#2E2E35" />
+
+            <TextView
+                android:id="@+id/tabAccount"
+                style="@style/TvTab"
+                android:text="@string/log_in" />
+
+            <TextView
+                android:id="@+id/tabSettings"
+                style="@style/TvTab"
+                android:text="@string/settings" />
+        </LinearLayout>
+    </ScrollView>
 
     <!-- live preview, placed over the focused card by TvPreview -->
     <androidx.media3.ui.PlayerView

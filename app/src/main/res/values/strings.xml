@@ -625,6 +625,7 @@
     <string name="tv_suggestions_hint">Watch a stream to get suggestions</string>
     <string name="tv_followed_game_rows">My games live</string>
     <string name="tv_offline">Offline</string>
+    <string name="tv_live_badge">LIVE</string>
     <string name="tv_add_favorite">Add to favorites</string>
     <string name="tv_remove_favorite">Remove from favorites</string>
     <string name="tv_open_channel">Open channel</string>

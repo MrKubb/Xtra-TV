@@ -10,6 +10,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import androidx.recyclerview.widget.RecyclerView
 import com.github.andreyasadchy.xtra.XtraApp
 import com.github.andreyasadchy.xtra.model.ui.CustomProxy
 import com.github.andreyasadchy.xtra.model.ui.Stream
@@ -21,8 +22,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Plays the focused live stream (with sound, low quality) on top of its card after a short delay.
- * Uses the same playlist sources as Xtra's player: custom proxies in order, then Twitch directly.
+ * Plays the focused live stream (with sound, low quality) on top of its card after a short delay,
+ * and zooms the card a little while it plays.
+ * Uses Xtra's ad-blocking custom proxies in order; Twitch is only used directly when they are turned off,
+ * so a preview never shows ads the proxies would have removed.
  */
 class TvPreview(private val activity: AppCompatActivity, private val view: PlayerView) {
 
@@ -42,8 +45,15 @@ class TvPreview(private val activity: AppCompatActivity, private val view: Playe
         job = activity.lifecycleScope.launch {
             delay(DELAY_MS)
             channelLogin = login
-            sources = proxyUrls(login) + null // null = Twitch directly
+            sources = if (activity.prefs().getBoolean(C.PLAYER_USE_CUSTOM_PROXY, true)) {
+                proxyUrls(login).ifEmpty { listOf(null) }
+            } else {
+                listOf(null) // null = Twitch directly
+            }
             sourceIndex = 0
+            // the video needs a laid out surface to render its first frame: show the view, still transparent
+            view.alpha = 0f
+            place(anchor)
             playCurrentSource()
         }
     }
@@ -56,11 +66,16 @@ class TvPreview(private val activity: AppCompatActivity, private val view: Playe
     fun stop() {
         job?.cancel()
         job = null
+        anchor?.let { card(it) }?.let { card ->
+            if (card.hasFocus()) card.animate().scaleX(FOCUSED_SCALE).scaleY(FOCUSED_SCALE).setDuration(150).start()
+        }
         anchor = null
         player?.run {
             stop()
             clearMediaItems()
         }
+        view.animate().cancel()
+        view.alpha = 0f
         view.visibility = View.GONE
     }
 
@@ -107,11 +122,19 @@ class TvPreview(private val activity: AppCompatActivity, private val view: Playe
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().setMaxVideoSize(854, 480).build()
         player.addListener(object : Player.Listener {
             override fun onRenderedFirstFrame() {
-                anchor?.let { place(it) }
+                val anchor = anchor ?: return
+                val card = card(anchor) ?: return
+                // zoom the card a bit, then lay the video exactly over its picture
+                card.animate().scaleX(PLAYING_SCALE).scaleY(PLAYING_SCALE).setDuration(150).withEndAction {
+                    if (this@TvPreview.anchor == anchor) {
+                        place(anchor)
+                        view.animate().alpha(1f).setDuration(150).start()
+                    }
+                }.start()
             }
 
             override fun onPlayerError(error: PlaybackException) {
-                // like Xtra's player: try the next proxy, then Twitch directly
+                // like Xtra's player: try the next proxy
                 sourceIndex += 1
                 job = activity.lifecycleScope.launch { playCurrentSource() }
             }
@@ -120,7 +143,14 @@ class TvPreview(private val activity: AppCompatActivity, private val view: Playe
         this.player = player
     }
 
-    /** Puts the video exactly over [anchor], including the focused card's zoom. */
+    /** The card (direct child of a RecyclerView) that contains [view]. */
+    private fun card(view: View): View? {
+        var v: View? = view
+        while (v != null && v.parent !is RecyclerView) v = v.parent as? View
+        return v
+    }
+
+    /** Puts the video exactly over [anchor], including the card's zoom. */
     private fun place(anchor: View) {
         val parent = view.parent as? View ?: return
         var scale = 1f
@@ -132,21 +162,19 @@ class TvPreview(private val activity: AppCompatActivity, private val view: Playe
         val anchorPos = IntArray(2).also { anchor.getLocationInWindow(it) }
         val parentPos = IntArray(2).also { parent.getLocationInWindow(it) }
         view.layoutParams = view.layoutParams.apply {
-            width = (anchor.width * scale).toInt()
-            height = (anchor.height * scale).toInt()
+            width = (anchor.width * scale).toInt().coerceAtLeast(1)
+            height = (anchor.height * scale).toInt().coerceAtLeast(1)
         }
         view.translationX = (anchorPos[0] - parentPos[0]).toFloat()
         view.translationY = (anchorPos[1] - parentPos[1]).toFloat()
         view.visibility = View.VISIBLE
     }
 
-    private suspend fun proxyUrls(login: String): List<String> {
-        if (!activity.prefs().getBoolean(C.PLAYER_USE_CUSTOM_PROXY, true)) return emptyList()
-        return repository.getCustomProxies()
+    private suspend fun proxyUrls(login: String): List<String> =
+        repository.getCustomProxies()
             .filter { it.enabled && !it.url.isNullOrBlank() }
             .sortedBy { it.position }
             .map { proxyUrl(it, login) }
-    }
 
     /** Same URL building as Xtra's player, minus the options a preview does not need. */
     private fun proxyUrl(proxy: CustomProxy, login: String): String {
@@ -164,5 +192,7 @@ class TvPreview(private val activity: AppCompatActivity, private val view: Playe
 
     companion object {
         private const val DELAY_MS = 1000L
+        const val FOCUSED_SCALE = 1.06f
+        private const val PLAYING_SCALE = 1.12f
     }
 }
