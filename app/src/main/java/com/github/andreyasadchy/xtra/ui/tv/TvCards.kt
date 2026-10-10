@@ -51,7 +51,7 @@ class TvCard(
  * [onLongClick] is called when OK is held on a card (favorites menu).
  */
 class TvCardAdapter(
-    private val onClick: (Any) -> Unit,
+    private val onClick: (Any, TvCardAdapter) -> Unit,
     private val onFocus: (TvCard, ImageView, Boolean) -> Unit,
     private val width: (() -> Int)? = null,
     private val onLongClick: (Any) -> Unit = {},
@@ -63,6 +63,10 @@ class TvCardAdapter(
 }) {
 
     class Holder(val binding: TvCardBinding) : RecyclerView.ViewHolder(binding.root)
+
+    /** Live streams currently loaded in this list, in order (what the player zaps through). */
+    fun streams(): List<com.github.andreyasadchy.xtra.model.ui.Stream> =
+        snapshot().items.mapNotNull { it.item as? com.github.andreyasadchy.xtra.model.ui.Stream }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
         val binding = TvCardBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -82,7 +86,7 @@ class TvCardAdapter(
         val card = getItem(position) ?: return
         with(holder.binding) {
             val context = root.context
-            root.setOnClickListener { onClick(card.item) }
+            root.setOnClickListener { onClick(card.item, this@TvCardAdapter) }
             root.setOnLongClickListener {
                 onLongClick(card.item)
                 true

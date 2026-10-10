@@ -27,7 +27,7 @@ class TvHome(
     private val activity: AppCompatActivity,
     private val list: RecyclerView,
     private val viewModel: TvViewModel,
-    private val onOpen: (Any) -> Unit,
+    private val onOpen: (Any, TvCardAdapter) -> Unit,
     private val onCardFocus: (TvCard, ImageView, Boolean) -> Unit,
     private val onRowFocus: (TvViewModel.Page) -> Unit,
     private val onRowCount: (TvViewModel.Page, Int?) -> Unit,
@@ -40,6 +40,7 @@ class TvHome(
     private val rows = HashMap<TvViewModel.Page, Row>()
     private var lastFocused: View? = null
     private var pendingFocus: TvViewModel.Page? = null
+    private var pendingFocusRunning = false
 
     init {
         list.layoutManager = object : LinearLayoutManager(activity) {
@@ -59,6 +60,7 @@ class TvHome(
             }
         }
         list.itemAnimator = null
+        list.clipChildren = false
     }
 
     /** One loaded list per section, kept while the section is shown. */
@@ -121,6 +123,9 @@ class TvHome(
                 }
             }
             binding.cards.itemAnimator = null
+            // the focused card's zoom overflows its row a little
+            binding.root.clipChildren = false
+            binding.cards.clipChildren = false
             return RowHolder(binding)
         }
 
@@ -207,10 +212,16 @@ class TvHome(
 
     private fun tryPendingFocus(attempt: Int = 0) {
         val page = pendingFocus ?: return
+        if (attempt == 0 && pendingFocusRunning) return
+        pendingFocusRunning = true
         // the row's cards are laid out a frame or two after their data arrives
         list.postDelayed({
-            if (pendingFocus == page && !focusRow(page) && attempt < 10) tryPendingFocus(attempt + 1)
-            else if (pendingFocus == page) pendingFocus = null
+            if (pendingFocus == page && !focusRow(page) && attempt < 20) {
+                tryPendingFocus(attempt + 1)
+            } else {
+                if (pendingFocus == page) pendingFocus = null
+                pendingFocusRunning = false
+            }
         }, 100)
     }
 
@@ -223,7 +234,8 @@ class TvHome(
         val holder = list.findViewHolderForAdapterPosition(position) as? RowHolder ?: return false
         val layoutManager = holder.binding.cards.layoutManager as LinearLayoutManager
         val card = layoutManager.findFirstCompletelyVisibleItemPosition().takeIf { it >= 0 } ?: 0
-        return holder.binding.cards.findViewHolderForAdapterPosition(card)?.itemView?.requestFocus() == true
+        // FromTouch: also leaves touch mode, where Android gives no focus at all (e.g. app started without a key press)
+        return holder.binding.cards.findViewHolderForAdapterPosition(card)?.itemView?.requestFocusFromTouch() == true
     }
 
     /** Gives the focus back to the card that was focused before opening a game, a channel or a stream. */

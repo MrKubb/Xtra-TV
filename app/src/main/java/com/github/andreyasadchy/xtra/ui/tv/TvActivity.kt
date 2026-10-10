@@ -2,6 +2,7 @@ package com.github.andreyasadchy.xtra.ui.tv
 
 import android.content.Intent
 import android.graphics.Rect
+import android.os.Build
 import android.os.Bundle
 import android.os.Parcelable
 import android.text.SpannableStringBuilder
@@ -73,6 +74,17 @@ class TvActivity : AppCompatActivity() {
         startActivity(Intent(this, TvActivity::class.java))
     }
 
+    /** The TV player can ask to open the channel of the stream it was playing. */
+    private val playerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val user = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            result.data?.getParcelableExtra(TvPlayerActivity.KEY_OPEN_CHANNEL, User::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            result.data?.getParcelableExtra(TvPlayerActivity.KEY_OPEN_CHANNEL)
+        }
+        if (result.resultCode == RESULT_OK && user != null) push(Page.Channel(user))
+    }
+
     /** Xtra's settings ask for a recreate when something visible changed. */
     private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (it.resultCode == RESULT_OK) recreate()
@@ -93,7 +105,7 @@ class TvActivity : AppCompatActivity() {
         applyTheme()
         binding = ActivityTvBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        preview = TvPreview(this, binding.previewView)
+        preview = TvPreview(this, binding)
         home = TvHome(this, binding.homeRows, viewModel, ::open, ::onCardFocus,
             onRowFocus = { page ->
                 viewModel.section = page.parent ?: page
@@ -140,7 +152,7 @@ class TvActivity : AppCompatActivity() {
             }
             btnLive.setOnClickListener {
                 (viewModel.stack.value.last() as? Page.Channel)?.user?.let { user ->
-                    play(Stream(channelId = user.id, channelLogin = user.login, channelName = user.name, channelImageURL = user.profileImageURL))
+                    play(Stream(channelId = user.id, channelLogin = user.login, channelName = user.name, channelImageURL = user.profileImageURL), emptyList())
                 }
             }
             searchInput.setOnEditorActionListener { v, actionId, event ->
@@ -418,14 +430,14 @@ class TvActivity : AppCompatActivity() {
 
     private fun onCardFocus(card: TvCard, image: ImageView, hasFocus: Boolean) {
         when {
-            hasFocus && card.item is Stream -> preview.schedule(card.item, image)
+            hasFocus && card.item is Stream -> preview.schedule(card, card.item, image)
             !hasFocus -> preview.stopIf(image)
         }
     }
 
-    private fun open(item: Any) {
+    private fun open(item: Any, adapter: TvCardAdapter) {
         when (item) {
-            is Stream -> play(item)
+            is Stream -> play(item, adapter.streams())
             is Video -> item.id?.let {
                 preview.stop()
                 openFullScreen()
@@ -448,15 +460,17 @@ class TvActivity : AppCompatActivity() {
         viewModel.stack.value += page
     }
 
-    private fun play(stream: Stream) {
+    /** Opens the TV player on [stream], with the streams of its row to zap through. */
+    private fun play(stream: Stream, row: List<Stream>) {
         preview.stop()
-        openFullScreen()
-        TvSettings.setLastChannel(this, stream.channelLogin, stream.channelName)
-        startActivity(Intent(this, MainActivity::class.java).apply {
-            action = MainActivity.INTENT_LIVE_NOTIFICATION
-            putExtra(MainActivity.KEY_VIDEO, stream)
-            putExtra(MainActivity.KEY_FROM_TV, true)
-        })
+        val list = row.takeIf { stream in it } ?: listOf(stream)
+        val position = list.indexOf(stream)
+        // a reasonable window around the stream keeps the intent small
+        val from = (position - MAX_ZAP / 2).coerceAtLeast(0)
+        val window = list.subList(from, (from + MAX_ZAP).coerceAtMost(list.size))
+        playerLauncher.launch(Intent(this, TvPlayerActivity::class.java)
+            .putParcelableArrayListExtra(TvPlayerActivity.KEY_STREAMS, ArrayList(window))
+            .putExtra(TvPlayerActivity.KEY_INDEX, position - from))
     }
 
     /** OK held on a card: add its channel to the favorites (or remove it), or open the channel. */
@@ -478,7 +492,11 @@ class TvActivity : AppCompatActivity() {
             .show()
     }
 
-    /** Streams opened from the TV interface start full screen: the chat only shows up when asked for. */
+    companion object {
+        private const val MAX_ZAP = 100
+    }
+
+    /** Videos opened from the TV interface start full screen: the chat only shows up when asked for. */
     private fun openFullScreen() {
         prefs().edit {
             putBoolean(C.KEY_CHAT_OPENED, false)

@@ -101,6 +101,7 @@
                     android:id="@+id/homeRows"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
+                    android:clipChildren="false"
                     android:clipToPadding="false"
                     android:paddingBottom="320dp" />
 
@@ -204,15 +205,75 @@
         </LinearLayout>
     </ScrollView>
 
-    <!-- live preview, placed over the focused card by TvPreview -->
-    <androidx.media3.ui.PlayerView
-        android:id="@+id/previewView"
+    <!-- live preview: a floating, larger copy of the focused card, placed over it by TvPreview -->
+    <LinearLayout
+        android:id="@+id/previewPopup"
         android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:descendantFocusability="blocksDescendants"
-        android:focusable="false"
-        android:visibility="gone"
-        app:resize_mode="zoom"
-        app:surface_type="texture_view"
-        app:use_controller="false" />
+        android:layout_height="wrap_content"
+        android:background="@drawable/tv_preview_popup_bg"
+        android:elevation="16dp"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <androidx.media3.ui.PlayerView
+            android:id="@+id/previewView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:descendantFocusability="blocksDescendants"
+            android:focusable="false"
+            app:resize_mode="zoom"
+            app:shutter_background_color="#1F1F23"
+            app:surface_type="texture_view"
+            app:use_controller="false" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/tv_preview_info_bg"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="12dp">
+
+            <ImageView
+                android:id="@+id/previewAvatar"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="12dp" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/previewLine1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="#FFFFFF"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/previewLine2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="#EDE4FF"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/previewLine3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:textColor="#DCD0F5"
+                    android:textSize="14sp" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
 </FrameLayout>

@@ -36,10 +36,15 @@ The APK installs next to the official Xtra app (it uses its own package name), s
 Every section can be shown, hidden and moved in **Settings → Menu sections**.
 
 ### Watching
-- **Live preview**: leave the focus on a stream for a second and it starts playing inside its card, with sound. It goes through the same ad-blocking proxies as the player. Can be turned off.
-- **Full screen by default**: streams open without the chat, which can still be opened from the player.
+- **Live preview**: leave the focus on a stream for a second and a larger floating preview starts playing over its card, with sound. It goes through the same ad-blocking proxies as the player. Can be turned off.
 - **Favorites**: hold OK on a stream or a channel to add it to (or remove it from) your favorites, or to open the channel.
 - **Search** for streams, channels and games.
+
+### TV player
+- Full screen live player built on Xtra's playback engine (same ad-blocking proxies, ad handling and qualities).
+- **Zapping**: Left/Right (or Up/Down) switch to the previous or next stream of the row the stream was opened from, with a channel banner.
+- **OK** opens the info panel: channel, game, title, uptime, viewers, language, quality, and compact buttons for chat, chat position, chat size, favorite, quality, channel page and reload.
+- **Floating chat** (off by default): drawn over the full screen video, in a corner or along a side, in three widths and three heights, all chosen with the arrows and remembered.
 
 ### Login and settings
 - **Login with an activation code**: the TV shows a code to enter on [twitch.tv/activate](https://www.twitch.tv/activate) from a phone or a computer, no typing with the remote. Xtra's regular browser login is still available as a fallback.
@@ -70,6 +75,14 @@ Xtra TV then shows up in the TV's apps with its banner.
 | OK | Play the stream, open the game or the channel |
 | Hold OK | Favorites menu |
 | Back | Back to the previous page, then to the sidebar |
+
+In the player:
+
+| Key | Action |
+|---|---|
+| Left / Right, Up / Down | Previous / next stream of the row |
+| OK | Info panel and buttons |
+| Back | Close the panel, then leave the player |
 
 ## Building from source
 

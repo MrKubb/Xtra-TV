@@ -607,6 +607,17 @@
     <string name="tv_followed_game_rows">Mes jeux en direct</string>
     <string name="tv_offline">Hors ligne</string>
     <string name="tv_live_badge">LIVE</string>
+    <string name="tv_player_chat">Chat</string>
+    <string name="tv_player_show_chat">Afficher le chat</string>
+    <string name="tv_player_hide_chat">Masquer le chat</string>
+    <string name="tv_player_quality">Qualité</string>
+    <string name="tv_player_reload">Recharger</string>
+    <string name="tv_player_move_chat">Déplacer le chat</string>
+    <string name="tv_player_resize_chat">Taille du chat</string>
+    <string name="tv_chat_resize_hint">◀ ▶ largeur\n▲ ▼ hauteur\n\nOK : terminé</string>
+    <string name="tv_chat_move_hint">◀ ▲ ▼ ▶\ndéplacer le chat\n\nOK : terminé</string>
+    <string name="tv_player_position">%1$d / %2$d dans cette rangée</string>
+    <string name="tv_player_hint">◀ ▶ stream précédent / suivant  ·  OK : ce panneau  ·  Retour : fermer</string>
     <string name="tv_add_favorite">Ajouter aux favoris</string>
     <string name="tv_remove_favorite">Retirer des favoris</string>
     <string name="tv_open_channel">Voir la chaîne</string>
