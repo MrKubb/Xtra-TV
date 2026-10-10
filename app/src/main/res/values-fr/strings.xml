@@ -587,4 +587,10 @@
     <string name="tv_watch_live">Regarder le direct</string>
     <string name="tv_all_languages">Toutes les langues</string>
     <string name="tv_languages_value">Langues : %s</string>
+    <string name="tv_login_title">Se connecter à Twitch</string>
+    <string name="tv_login_step1">Sur ton téléphone ou ordinateur, va sur</string>
+    <string name="tv_login_step2">et entre ce code :</string>
+    <string name="tv_login_waiting">En attente de validation… cet écran se fermera tout seul.</string>
+    <string name="tv_login_new_code">Nouveau code</string>
+    <string name="tv_login_other_method">Autre méthode (navigateur)</string>
 </resources>

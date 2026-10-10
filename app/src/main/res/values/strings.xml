@@ -606,4 +606,10 @@
     <string name="tv_watch_live">Watch live</string>
     <string name="tv_all_languages">All languages</string>
     <string name="tv_languages_value">Languages: %s</string>
+    <string name="tv_login_title">Log in to Twitch</string>
+    <string name="tv_login_step1">On your phone or computer, go to</string>
+    <string name="tv_login_step2">and enter this code:</string>
+    <string name="tv_login_waiting">Waiting for authorization… this screen will close by itself.</string>
+    <string name="tv_login_new_code">New code</string>
+    <string name="tv_login_other_method">Other method (browser)</string>
 </resources>

@@ -60,7 +60,6 @@ import com.github.andreyasadchy.xtra.repository.datasource.SearchChannelsDataSou
 import com.github.andreyasadchy.xtra.repository.datasource.SearchGamesDataSource
 import com.github.andreyasadchy.xtra.repository.datasource.SearchStreamsDataSource
 import com.github.andreyasadchy.xtra.repository.datasource.StreamsDataSource
-import com.github.andreyasadchy.xtra.ui.login.LoginActivity
 import com.github.andreyasadchy.xtra.ui.main.MainActivity
 import com.github.andreyasadchy.xtra.ui.settings.SettingsActivity
 import com.github.andreyasadchy.xtra.util.C
@@ -139,10 +138,12 @@ class TvActivity : AppCompatActivity() {
                         .setTitle(R.string.logout_title)
                         .setMessage(getString(R.string.logout_msg, tokenPrefs().getString(C.USERNAME, null)))
                         .setNegativeButton(R.string.no, null)
-                        .setPositiveButton(R.string.yes) { _, _ -> restartLauncher.launch(Intent(this@TvActivity, LoginActivity::class.java)) }
+                        .setPositiveButton(R.string.yes) { _, _ ->
+                            restartLauncher.launch(Intent(this@TvActivity, TvLoginActivity::class.java).putExtra(TvLoginActivity.EXTRA_LOGOUT, true))
+                        }
                         .show()
                 } else {
-                    restartLauncher.launch(Intent(this@TvActivity, LoginActivity::class.java))
+                    restartLauncher.launch(Intent(this@TvActivity, TvLoginActivity::class.java))
                 }
             }
             tabSettings.setOnClickListener { restartLauncher.launch(Intent(this@TvActivity, SettingsActivity::class.java)) }
